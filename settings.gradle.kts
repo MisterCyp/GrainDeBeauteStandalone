@@ -17,5 +17,5 @@ dependencyResolutionManagement {
         maven { url = uri("https://chaquo.com/maven") }
     }
 }
-rootProject.name = "graindebeaute_android_web"
+rootProject.name = "graindebeaute_android_standalone"
 include(":app")
