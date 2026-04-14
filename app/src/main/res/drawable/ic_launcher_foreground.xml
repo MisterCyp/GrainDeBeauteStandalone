@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Cercle représentant le grain de beauté (Mole) -->
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M54,54m-18,0a18,18 0,1 1,36 0a18,18 0,1 1,-36 0" />
+    
+    <!-- Loupe : Le cercle de la loupe -->
+    <path
+        android:strokeColor="#007AFF"
+        android:strokeWidth="4"
+        android:pathData="M54,54m-26,0a26,26 0,1 1,52 0a26,26 0,1 1,-52 0" />
+        
+    <!-- Loupe : Le manche -->
+    <path
+        android:strokeColor="#007AFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:pathData="M72,72l12,12" />
+
+</vector>
