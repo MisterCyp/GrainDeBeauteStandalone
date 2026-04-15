@@ -27,9 +27,19 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(project.findProperty("MYAPP_RELEASE_STORE_FILE") ?: "my-release-key.jks")
+            storePassword = project.findProperty("MYAPP_RELEASE_STORE_PASSWORD") as String?
+            keyAlias = project.findProperty("MYAPP_RELEASE_KEY_ALIAS") as String?
+            keyPassword = project.findProperty("MYAPP_RELEASE_KEY_PASSWORD") as String?
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

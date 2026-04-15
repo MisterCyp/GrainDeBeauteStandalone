@@ -25,15 +25,91 @@ import androidx.compose.runtime.*
 import com.grainbeaute.androidweb.data.LocalRepository
 import com.grainbeaute.androidweb.model.LocalAppSettings
 import kotlinx.coroutines.launch
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.grainbeaute.androidweb.data.DatabaseBackupManager
+import android.widget.Toast
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navController: NavController, repository: LocalRepository) {
     var appSettings by remember { mutableStateOf<LocalAppSettings?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val backupManager = remember { DatabaseBackupManager(context) }
+    
+    var showRestoreConfirm by remember { mutableStateOf(false) }
+    var selectedRestoreUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
+    // Launcher pour la SAUVEGARDE (Création de fichier)
+    val createBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        uri?.let {
+            scope.launch {
+                try {
+                    context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                        val success = backupManager.exportBackup(outputStream)
+                        if (success) {
+                            Toast.makeText(context, "Sauvegarde réussie (Données + Images) !", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Échec de la sauvegarde", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Erreur lors de la sauvegarde : ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // Launcher pour la RESTAURATION (Sélection de fichier)
+    val pickBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            selectedRestoreUri = it
+            showRestoreConfirm = true
+        }
+    }
 
     LaunchedEffect(Unit) {
         appSettings = repository.getAppSettings()
+    }
+
+    if (showRestoreConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRestoreConfirm = false },
+            title = { Text("Confirmer la restauration") },
+            text = { Text("Toutes vos données (grains de beauté, visites) et vos photos actuelles seront remplacées par celles de la sauvegarde. Cette action est irréversible.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRestoreConfirm = false
+                    selectedRestoreUri?.let { uri ->
+                        scope.launch {
+                            try {
+                                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                                    val success = backupManager.importBackup(inputStream)
+                                    if (success) {
+                                        Toast.makeText(context, "Restauration réussie. Veuillez redémarrer l'application.", Toast.LENGTH_LONG).show()
+                                    } else {
+                                        Toast.makeText(context, "Échec de la restauration", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Erreur lors de la restauration : ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }) { Text("Restaurer", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreConfirm = false }) { Text("Annuler") }
+            }
+        )
     }
 
     Scaffold(
@@ -179,6 +255,34 @@ fun SettingsScreen(navController: NavController, repository: LocalRepository) {
                     }
                 }
             }
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            Text(
+                "DONNÉES",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.Gray,
+                modifier = Modifier.padding(16.dp)
+            )
+
+            SettingsMenuItem(
+                icon = Icons.Default.CloudUpload,
+                title = "Sauvegarder",
+                description = "Données et photos (format .zip)",
+                onClick = {
+                    val date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm"))
+                    createBackupLauncher.launch("grainbeaute_backup_$date.zip")
+                }
+            )
+
+            SettingsMenuItem(
+                icon = Icons.Default.CloudDownload,
+                title = "Restaurer",
+                description = "Importer depuis un fichier .zip",
+                onClick = {
+                    pickBackupLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
+                }
+            )
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 

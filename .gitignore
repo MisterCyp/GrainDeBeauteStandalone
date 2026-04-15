@@ -19,6 +19,12 @@ local.properties
 
 # APK / release
 /app/release/
+*.jks
+*.keystore
+
+# Local development secrets
+local.properties
+gradle.properties
 
 # Heap dumps
 *.hprof
