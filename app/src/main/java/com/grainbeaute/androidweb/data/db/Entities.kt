@@ -44,3 +44,49 @@ data class CaptureEntity(
     val isConfident: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
 )
+
+@Entity(tableName = "dermatologist_visits")
+data class DermatologistVisitEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val date: Long,
+    val practitionerName: String? = null,
+    val practitionerAddress: String? = null,
+    val globalNote: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+)
+
+@Entity(
+    tableName = "mole_diagnoses",
+    foreignKeys = [
+        ForeignKey(
+            entity = DermatologistVisitEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["visitId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = MoleEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["moleId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
+    indices = [Index("visitId"), Index("moleId")]
+)
+data class MoleDiagnosisEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val visitId: Int,
+    val moleId: Int?,           // nullable : grain peut être supprimé après
+    val moleName: String,       // snapshot du nom au moment de la visite
+    val category: String,       // "benign" | "monitor" | "suspect" | "removed"
+    val note: String? = null,
+)
+
+@Entity(tableName = "app_settings")
+data class AppSettingsEntity(
+    @PrimaryKey val id: Int = 1,  // singleton
+    val nextAppointmentDate: Long? = null,
+    val practitionerName: String? = null,
+    val practitionerAddress: String? = null,
+    val reminderDaysBefore: Int = 7,
+)

@@ -1,24 +1,15 @@
 package com.grainbeaute.androidweb.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import android.content.Context
+import androidx.compose.animation.*
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,17 +20,22 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.work.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.grainbeaute.androidweb.R
 import com.grainbeaute.androidweb.data.LocalRepository
-import com.grainbeaute.androidweb.model.LocalMole
+import com.grainbeaute.androidweb.model.*
 import com.grainbeaute.androidweb.ui.theme.CardBorder
 import com.grainbeaute.androidweb.ui.theme.MedicalWarning
+import com.grainbeaute.androidweb.workers.AppointmentReminderWorker
 import kotlinx.coroutines.launch
 import java.io.File
+import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -47,18 +43,25 @@ import java.util.concurrent.TimeUnit
 @Composable
 fun DashboardScreen(navController: NavController, repository: LocalRepository) {
     var moles by remember { mutableStateOf<List<LocalMole>>(emptyList()) }
+    var visits by remember { mutableStateOf<List<LocalDermatologistVisit>>(emptyList()) }
+    var appSettings by remember { mutableStateOf<LocalAppSettings?>(null) }
     var isLoading by remember { mutableStateOf(true) }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var moleToDelete by remember { mutableStateOf<LocalMole?>(null) }
-    var speedDialOpen by remember { mutableStateOf(false) }
+    
+    var showNewVisitSheet by remember { mutableStateOf(false) }
+    var showSettingsSheet by remember { mutableStateOf(false) }
+    var showPractitionerSheet by remember { mutableStateOf(false) }
+    
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
-    fun loadMoles() {
+    fun loadData() {
         scope.launch {
             isLoading = true
             try {
                 moles = repository.getMoles()
+                visits = repository.getVisits()
+                appSettings = repository.getAppSettings()
             } catch (e: Exception) {
                 snackbarHostState.showSnackbar("Erreur : ${e.message}")
             } finally {
@@ -68,7 +71,7 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
     }
 
     LaunchedEffect(Unit) {
-        loadMoles()
+        loadData()
     }
 
     Scaffold(
@@ -78,7 +81,7 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             modifier = Modifier.size(32.dp),
-                            color = Color(0xFF007AFF), // Bleu médical
+                            color = Color(0xFF007AFF),
                             shape = CircleShape
                         ) {
                             Icon(
@@ -89,24 +92,10 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Mes Grains de Beauté", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text("Dashboard Santé", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
-        },
-        floatingActionButton = {
-            SpeedDialFab(
-                isOpen = speedDialOpen,
-                onToggle = { speedDialOpen = !speedDialOpen },
-                onOpenCamera = {
-                    speedDialOpen = false
-                    navController.navigate("camera/-1")
-                },
-                onCreateMole = {
-                    speedDialOpen = false
-                    showAddDialog = true
-                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -116,289 +105,197 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
                 Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (moles.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text("Aucun grain de beauté. Ajoutez-en un !", color = Color.Gray)
-                }
             } else {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(bottom = 32.dp, top = 16.dp)
                 ) {
-                    items(moles) { mole ->
-                        MoleCard(
-                            mole = mole,
-                            onClick = { navController.navigate("mole_detail/${mole.id}") },
-                            onDelete = { moleToDelete = mole }
+                    // SECTION 1 — Résumé santé
+                    item {
+                        HealthSummaryCard(
+                            moleCount = moles.size,
+                            lastVisitDate = visits.firstOrNull()?.date,
+                            nextAppointment = appSettings,
+                            onClickNextAppointment = { showSettingsSheet = true }
                         )
                     }
-                }
-            }
 
-            if (speedDialOpen) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.3f))
-                        .clickable { speedDialOpen = false }
-                )
-            }
-        }
-    }
+                    // SECTION Stats
+                    item {
+                        DiagnosisStatsRow(moles = moles)
+                    }
 
-    if (showAddDialog) {
-        var name by remember { mutableStateOf("") }
-        var bodyPart by remember { mutableStateOf("") }
-        
-        AlertDialog(
-            onDismissRequest = { showAddDialog = false },
-            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-            modifier = Modifier.padding(24.dp),
-            content = {
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFFF5F7FA) // Fond gris médical
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Nouveau Grain", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        
-                        Spacer(modifier = Modifier.height(20.dp))
+                    // SECTION 2 — Mon Dermato
+                    item {
+                        Text("MON DERMATOLOGUE", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    }
+                    item {
+                        PractitionerCard(
+                            settings = appSettings ?: LocalAppSettings(null, null, null, 7),
+                            onClick = { showPractitionerSheet = true }
+                        )
+                    }
 
-                        // Carte blanche pour le formulaire
-                        Card(
+                    // SECTION 3 — Visites dermatologiques
+                    item {
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, Color(0xFFE0E6ED))
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                OutlinedTextField(
-                                    value = name,
-                                    onValueChange = { name = it },
-                                    label = { Text("Nom (ex: Dos)") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    singleLine = true
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                OutlinedTextField(
-                                    value = bodyPart,
-                                    onValueChange = { bodyPart = it },
-                                    label = { Text("Partie du corps") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    singleLine = true
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(
-                                onClick = { showAddDialog = false },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
-                                border = BorderStroke(1.dp, Color(0xFFE0E6ED)),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Annuler")
-                            }
-                            
-                            Button(
-                                onClick = {
-                                    scope.launch {
-                                        try {
-                                            repository.createMole(name, bodyPart.takeIf { it.isNotBlank() })
-                                            loadMoles()
-                                            showAddDialog = false
-                                        } catch (e: Exception) {
-                                            showAddDialog = false
-                                            snackbarHostState.showSnackbar("Erreur lors de la création : ${e.localizedMessage ?: "erreur inconnue"}")
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                enabled = name.isNotBlank(),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007AFF)),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
+                            Text("VISITES PASSÉES", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
+                            TextButton(onClick = { showNewVisitSheet = true }) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text("Ajouter")
                             }
                         }
                     }
-                }
-            }
-        )
-    }
 
-    moleToDelete?.let { mole ->
-        AlertDialog(
-            onDismissRequest = { moleToDelete = null },
-            title = { Text("Supprimer ?") },
-            text = { Text("Voulez-vous vraiment supprimer '${mole.name}' et toutes ses captures ?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            try {
-                                repository.deleteMole(mole.id)
-                                loadMoles()
-                                moleToDelete = null
-                            } catch (e: Exception) {
-                                moleToDelete = null
-                                snackbarHostState.showSnackbar("Erreur lors de la suppression : ${e.localizedMessage ?: "erreur inconnue"}")
+                    if (visits.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+                                border = BorderStroke(1.dp, Color(0xFFE0E6ED))
+                            ) {
+                                Text(
+                                    "Aucun historique de visite.",
+                                    modifier = Modifier.padding(16.dp),
+                                    color = Color.Gray,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                             }
                         }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Supprimer") }
-            },
-            dismissButton = {
-                TextButton(onClick = { moleToDelete = null }) { Text("Annuler") }
+                    } else {
+                        items(visits) { visit ->
+                            VisitCard(
+                                visit = visit,
+                                onClick = { navController.navigate("visit_detail/${visit.id}") }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showNewVisitSheet) {
+        NewVisitBottomSheet(
+            moles = moles,
+            currentPractitionerName = appSettings?.practitionerName,
+            currentPractitionerAddress = appSettings?.practitionerAddress,
+            onDismiss = { showNewVisitSheet = false },
+            onSave = { date, practitionerName, practitionerAddress, note, diags ->
+                scope.launch {
+                    repository.createVisit(date, practitionerName, practitionerAddress, note, diags)
+                    loadData()
+                    showNewVisitSheet = false
+                }
+            }
+        )
+    }
+
+    if (showSettingsSheet) {
+        SettingsAppointmentBottomSheet(
+            currentSettings = appSettings ?: LocalAppSettings(null, null, null, 7),
+            onDismiss = { showSettingsSheet = false },
+            onSave = { newSettings ->
+                scope.launch {
+                    repository.updateAppSettings(newSettings)
+                    if (newSettings.nextAppointmentDate != null) {
+                        scheduleReminder(context, newSettings)
+                    } else {
+                        WorkManager.getInstance(context).cancelAllWorkByTag("appointment_reminder")
+                    }
+                    loadData()
+                    showSettingsSheet = false
+                }
+            }
+        )
+    }
+
+    if (showPractitionerSheet) {
+        PractitionerInfoBottomSheet(
+            currentSettings = appSettings ?: LocalAppSettings(null, null, null, 7),
+            onDismiss = { showPractitionerSheet = false },
+            onSave = { newSettings ->
+                scope.launch {
+                    repository.updateAppSettings(newSettings)
+                    loadData()
+                    showPractitionerSheet = false
+                }
             }
         )
     }
 }
 
 @Composable
-fun MoleCard(mole: LocalMole, onClick: () -> Unit, onDelete: () -> Unit) {
-    val context = LocalContext.current
-
+fun PractitionerCard(settings: LocalAppSettings, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CardBorder))
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFE0E6ED))
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Thumbnail
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .border(1.dp, Color.Black, CircleShape)
-                    .background(Color.LightGray)
-            ) {
-                mole.lastCapture?.let {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(mole.lastCapture.croppedImagePath?.let { path -> File(path) })
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } ?: Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.align(Alignment.Center), tint = Color.Gray)
-            }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(mole.name, style = MaterialTheme.typography.titleMedium)
-                mole.bodyPart?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    color = Color(0xFFF0F7FF),
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF007AFF), modifier = Modifier.padding(8.dp))
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-
-                val timeInfo = getTimeSinceLastAnalysis(mole.lastCapture?.createdAt)
-                Text(
-                    text = timeInfo,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (timeInfo.contains("jour")) MedicalWarning else Color.Gray
-                )
-            }
-            
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = Color.LightGray)
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(settings.practitionerName ?: "Nom du praticien non renseigné", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    if (!settings.practitionerAddress.isNullOrBlank()) {
+                        Text(settings.practitionerAddress!!, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    }
+                }
             }
         }
-    }
-}
-
-fun getTimeSinceLastAnalysis(createdAt: Long?): String {
-    if (createdAt == null) return "Aucune analyse"
-
-    return try {
-        val now = Date()
-        val diffInMillis = now.time - createdAt
-        val hours = TimeUnit.MILLISECONDS.toHours(diffInMillis)
-        val days = TimeUnit.MILLISECONDS.toDays(diffInMillis)
-
-        when {
-            hours < 1 -> "À l'instant"
-            days < 1 -> "Il y a $hours h"
-            days == 1L -> "Il y a 1 jour"
-            else -> "Il y a $days jours"
-        }
-    } catch (e: Exception) {
-        "Date inconnue"
     }
 }
 
 @Composable
-fun SpeedDialFab(
-    isOpen: Boolean,
-    onToggle: () -> Unit,
-    onOpenCamera: () -> Unit,
-    onCreateMole: () -> Unit
-) {
-    Column(horizontalAlignment = Alignment.End) {
-        AnimatedVisibility(
-            visible = isOpen,
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+fun DiagnosisStatsRow(moles: List<LocalMole>) {
+    val stats = moles.groupBy { it.latestDiagnosis?.category }
+    val benignCount = stats[DiagnosisCategory.BENIGN]?.size ?: 0
+    val monitorCount = stats[DiagnosisCategory.MONITOR]?.size ?: 0
+    val suspectCount = stats[DiagnosisCategory.SUSPECT]?.size ?: 0
+    val removedCount = stats[DiagnosisCategory.REMOVED]?.size ?: 0
+    val noneCount = stats[null]?.size ?: 0
+
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        StatChip(count = benignCount, label = "Bénins", color = Color(0xFF4CAF50))
+        StatChip(count = monitorCount, label = "Surveil.", color = Color(0xFFFF9800))
+        StatChip(count = suspectCount, label = "Suspects", color = Color(0xFFF44336))
+        StatChip(count = removedCount, label = "Retirés", color = Color(0xFF9E9E9E))
+        StatChip(count = noneCount, label = "À diag.", color = Color(0xFF007AFF))
+    }
+}
+
+@Composable
+fun StatChip(count: Int, label: String, color: Color) {
+    Surface(
+        color = color.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 8.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Prendre des photos",
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    SmallFloatingActionButton(onClick = onOpenCamera) {
-                        Icon(Icons.Default.CameraAlt, contentDescription = "Mode rafale")
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Nouveau grain",
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    SmallFloatingActionButton(onClick = onCreateMole) {
-                        Icon(Icons.Default.Add, contentDescription = "Nouveau grain")
-                    }
-                }
-            }
-        }
-        FloatingActionButton(onClick = onToggle) {
-            Icon(
-                imageVector = if (isOpen) Icons.Default.Close else Icons.Default.Add,
-                contentDescription = if (isOpen) "Fermer" else "Menu"
-            )
+            Text(count.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = color)
         }
     }
 }

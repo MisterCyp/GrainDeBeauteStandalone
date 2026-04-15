@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -68,14 +69,8 @@ fun MainScreen(navController: NavController, repository: LocalRepository) {
                     )
                 )
                 NavigationBarItem(
-                    icon = {
-                        BadgedBox(badge = {
-                            if (identificationBadgeCount > 0) Badge { Text("$identificationBadgeCount") }
-                        }) {
-                            Icon(Icons.Default.Search, contentDescription = "Identification")
-                        }
-                    },
-                    label = { Text("Identification") },
+                    icon = { Icon(Icons.Default.Spa, contentDescription = "Mes Grains") },
+                    label = { Text("Grains") },
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
                     colors = NavigationBarItemDefaults.colors(
@@ -87,10 +82,29 @@ fun MainScreen(navController: NavController, repository: LocalRepository) {
                     )
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Paramètres") },
-                    label = { Text("Paramètres") },
+                    icon = {
+                        BadgedBox(badge = {
+                            if (identificationBadgeCount > 0) Badge { Text("$identificationBadgeCount") }
+                        }) {
+                            Icon(Icons.Default.Search, contentDescription = "Identification")
+                        }
+                    },
+                    label = { Text("Identification") },
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color(0xFF007AFF),
+                        selectedTextColor = Color(0xFF007AFF),
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray,
+                        indicatorColor = Color(0xFFE3F2FD)
+                    )
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "Paramètres") },
+                    label = { Text("Paramètres") },
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFF007AFF),
                         selectedTextColor = Color(0xFF007AFF),
@@ -109,12 +123,13 @@ fun MainScreen(navController: NavController, repository: LocalRepository) {
         ) {
             when (selectedTab) {
                 0 -> DashboardScreen(navController, repository)
-                1 -> InboxScreen(
+                1 -> MolesScreen(navController, repository)
+                2 -> InboxScreen(
                     navController = navController,
                     repository = repository,
                     onBadgeCountChange = { identificationBadgeCount = it }
                 )
-                2 -> SettingsScreen(navController)
+                3 -> SettingsScreen(navController, repository)
             }
         }
     }

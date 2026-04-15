@@ -19,9 +19,22 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
+import androidx.compose.material.icons.filled.*
+import androidx.compose.runtime.*
+import com.grainbeaute.androidweb.data.LocalRepository
+import com.grainbeaute.androidweb.model.LocalAppSettings
+import kotlinx.coroutines.launch
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(navController: NavController) {
+fun SettingsScreen(navController: NavController, repository: LocalRepository) {
+    var appSettings by remember { mutableStateOf<LocalAppSettings?>(null) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        appSettings = repository.getAppSettings()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -40,13 +53,68 @@ fun SettingsScreen(navController: NavController) {
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
+            Text(
+                "GÉNÉRAL",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.Gray,
+                modifier = Modifier.padding(16.dp)
+            )
+
             SettingsMenuItem(
                 icon = Icons.Default.Camera,
                 title = "Matériel",
                 description = "Calibration du centre de l'image",
                 onClick = { navController.navigate("calibration") }
             )
+            
+            Divider(modifier = Modifier.padding(horizontal = 16.dp))
+
+            // Section Rappels
+            appSettings?.let { settings ->
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            modifier = Modifier.size(40.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = CircleShape
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Notifications, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Rappels de rendez-vous", style = MaterialTheme.typography.titleMedium)
+                            Text("Nombre de jours avant le RDV", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        listOf(1, 3, 7, 14).forEach { days ->
+                            FilterChip(
+                                selected = settings.reminderDaysBefore == days,
+                                onClick = {
+                                    scope.launch {
+                                        val newSettings = settings.copy(reminderDaysBefore = days)
+                                        repository.updateAppSettings(newSettings)
+                                        appSettings = newSettings
+                                        // TODO: Recalculer le reminder si un RDV existe
+                                    }
+                                },
+                                label = { Text("$days j") }
+                            )
+                        }
+                    }
+                }
+            }
+
             Divider(modifier = Modifier.padding(vertical = 8.dp))
+
             SettingsMenuItem(
                 icon = Icons.Default.Info,
                 title = "À propos",

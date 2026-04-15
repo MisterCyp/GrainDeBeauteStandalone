@@ -25,3 +25,6 @@ local.properties
 
 # Kotlin daemon
 .kotlin/
+
+#claude
+.superpowers/

@@ -5,16 +5,27 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [MoleEntity::class, CaptureEntity::class],
-    version = 1,
+    entities = [
+        MoleEntity::class,
+        CaptureEntity::class,
+        DermatologistVisitEntity::class,
+        MoleDiagnosisEntity::class,
+        AppSettingsEntity::class
+    ],
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun moleDao(): MoleDao
     abstract fun captureDao(): CaptureDao
+    abstract fun dermatologistVisitDao(): DermatologistVisitDao
+    abstract fun moleDiagnosisDao(): MoleDiagnosisDao
+    abstract fun appSettingsDao(): AppSettingsDao
 
     companion object {
         @Volatile
@@ -26,7 +37,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "grainbeaute.db"
-                ).build().also { INSTANCE = it }
+                )
+                    .addMigrations(*Migrations.ALL)
+                    .build().also { INSTANCE = it }
             }
     }
 }

@@ -7,6 +7,34 @@ data class LocalMole(
     val createdAt: Long,
     val lastCapture: LocalCapture? = null,
     val captures: List<LocalCapture> = emptyList(),
+    val latestDiagnosis: LocalMoleDiagnosis? = null,
+)
+
+enum class DiagnosisCategory { BENIGN, MONITOR, SUSPECT, REMOVED }
+
+data class LocalMoleDiagnosis(
+    val id: Int,
+    val visitId: Int,
+    val moleId: Int?,
+    val moleName: String,
+    val category: DiagnosisCategory,
+    val note: String?,
+)
+
+data class LocalDermatologistVisit(
+    val id: Int,
+    val date: Long,
+    val practitionerName: String?,
+    val practitionerAddress: String?,
+    val globalNote: String?,
+    val diagnoses: List<LocalMoleDiagnosis>,
+)
+
+data class LocalAppSettings(
+    val nextAppointmentDate: Long?,
+    val practitionerName: String?,
+    val practitionerAddress: String?,
+    val reminderDaysBefore: Int,
 )
 
 data class LocalCapture(

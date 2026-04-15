@@ -19,6 +19,9 @@ class LocalRepository(private val context: Context) {
     private val db = AppDatabase.getInstance(context)
     private val moleDao = db.moleDao()
     private val captureDao = db.captureDao()
+    private val visitDao = db.dermatologistVisitDao()
+    private val diagnosisDao = db.moleDiagnosisDao()
+    private val settingsDao = db.appSettingsDao()
     private val gson = Gson()
 
     val imagesDir: File
@@ -31,14 +34,24 @@ class LocalRepository(private val context: Context) {
     suspend fun getMoles(): List<LocalMole> = withContext(Dispatchers.IO) {
         moleDao.getAll().map { mole ->
             val captures = captureDao.getByMole(mole.id).map { it.toLocalCapture() }
-            mole.toLocalMole(captures = captures, lastCapture = captures.firstOrNull())
+            val latestDiag = diagnosisDao.getLatestByMole(mole.id)?.toLocalDiagnosis()
+            mole.toLocalMole(
+                captures = captures,
+                lastCapture = captures.firstOrNull(),
+                latestDiagnosis = latestDiag
+            )
         }
     }
 
     suspend fun getMole(id: Int): LocalMole? = withContext(Dispatchers.IO) {
         val mole = moleDao.getById(id) ?: return@withContext null
         val captures = captureDao.getByMole(id).map { it.toLocalCapture() }
-        mole.toLocalMole(captures = captures, lastCapture = captures.firstOrNull())
+        val latestDiag = diagnosisDao.getLatestByMole(id)?.toLocalDiagnosis()
+        mole.toLocalMole(
+            captures = captures,
+            lastCapture = captures.firstOrNull(),
+            latestDiagnosis = latestDiag
+        )
     }
 
     suspend fun createMole(name: String, bodyPart: String?): LocalMole = withContext(Dispatchers.IO) {
@@ -55,6 +68,81 @@ class LocalRepository(private val context: Context) {
     suspend fun updateMole(id: Int, name: String, bodyPart: String?) = withContext(Dispatchers.IO) {
         val entity = moleDao.getById(id) ?: return@withContext
         moleDao.update(entity.copy(name = name, bodyPart = bodyPart))
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // VISITS & DIAGNOSES
+    // ──────────────────────────────────────────────────────────
+
+    suspend fun getVisits(): List<LocalDermatologistVisit> = withContext(Dispatchers.IO) {
+        visitDao.getAll().map { visit ->
+            val diagnoses = diagnosisDao.getByVisit(visit.id).map { it.toLocalDiagnosis() }
+            visit.toLocalVisit(diagnoses)
+        }
+    }
+
+    suspend fun getVisit(id: Int): LocalDermatologistVisit? = withContext(Dispatchers.IO) {
+        val visit = visitDao.getById(id) ?: return@withContext null
+        val diagnoses = diagnosisDao.getByVisit(id).map { it.toLocalDiagnosis() }
+        visit.toLocalVisit(diagnoses)
+    }
+
+    suspend fun createVisit(date: Long, practitionerName: String?, practitionerAddress: String?, globalNote: String?, diagnoses: List<Pair<Int, LocalMoleDiagnosis>>): Int = withContext(Dispatchers.IO) {
+        val visitId = visitDao.insert(DermatologistVisitEntity(date = date, practitionerName = practitionerName, practitionerAddress = practitionerAddress, globalNote = globalNote)).toInt()
+        val diagnosisEntities = diagnoses.map { (_, diag) ->
+            MoleDiagnosisEntity(
+                visitId = visitId,
+                moleId = diag.moleId,
+                moleName = diag.moleName,
+                category = diag.category.name.lowercase(),
+                note = diag.note
+            )
+        }
+        diagnosisDao.insertAll(diagnosisEntities)
+        visitId
+    }
+
+    suspend fun updateVisit(visitId: Int, date: Long, practitionerName: String?, practitionerAddress: String?, globalNote: String?, diagnoses: List<LocalMoleDiagnosis>) = withContext(Dispatchers.IO) {
+        visitDao.update(DermatologistVisitEntity(id = visitId, date = date, practitionerName = practitionerName, practitionerAddress = practitionerAddress, globalNote = globalNote))
+        val diagnosisEntities = diagnoses.map { diag ->
+            MoleDiagnosisEntity(
+                visitId = visitId,
+                moleId = diag.moleId,
+                moleName = diag.moleName,
+                category = diag.category.name.lowercase(),
+                note = diag.note
+            )
+        }
+        diagnosisDao.replaceDiagnosesForVisit(visitId, diagnosisEntities)
+    }
+
+    suspend fun deleteVisit(id: Int) = withContext(Dispatchers.IO) {
+        val visit = visitDao.getById(id) ?: return@withContext
+        visitDao.delete(visit)
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // SETTINGS
+    // ──────────────────────────────────────────────────────────
+
+    suspend fun getAppSettings(): LocalAppSettings = withContext(Dispatchers.IO) {
+        settingsDao.get()?.toLocalSettings() ?: LocalAppSettings(
+            nextAppointmentDate = null,
+            practitionerName = null,
+            practitionerAddress = null,
+            reminderDaysBefore = 7
+        )
+    }
+
+    suspend fun updateAppSettings(settings: LocalAppSettings) = withContext(Dispatchers.IO) {
+        settingsDao.upsert(
+            AppSettingsEntity(
+                nextAppointmentDate = settings.nextAppointmentDate,
+                practitionerName = settings.practitionerName,
+                practitionerAddress = settings.practitionerAddress,
+                reminderDaysBefore = settings.reminderDaysBefore
+            )
+        )
     }
 
     // ──────────────────────────────────────────────────────────
@@ -253,9 +341,11 @@ class LocalRepository(private val context: Context) {
     private fun MoleEntity.toLocalMole(
         captures: List<LocalCapture> = emptyList(),
         lastCapture: LocalCapture? = null,
+        latestDiagnosis: LocalMoleDiagnosis? = null,
     ) = LocalMole(
         id = id, name = name, bodyPart = bodyPart,
         createdAt = createdAt, lastCapture = lastCapture, captures = captures,
+        latestDiagnosis = latestDiagnosis
     )
 
     fun CaptureEntity.toLocalCapture(): LocalCapture {
@@ -282,4 +372,27 @@ class LocalRepository(private val context: Context) {
             createdAt = createdAt,
         )
     }
+
+    private fun DermatologistVisitEntity.toLocalVisit(diagnoses: List<LocalMoleDiagnosis>) =
+        LocalDermatologistVisit(id = id, date = date, practitionerName = practitionerName, practitionerAddress = practitionerAddress, globalNote = globalNote, diagnoses = diagnoses)
+
+    private fun MoleDiagnosisEntity.toLocalDiagnosis() = LocalMoleDiagnosis(
+        id = id,
+        visitId = visitId,
+        moleId = moleId,
+        moleName = moleName,
+        category = try {
+            DiagnosisCategory.valueOf(category.uppercase())
+        } catch (_: Exception) {
+            DiagnosisCategory.BENIGN
+        },
+        note = note
+    )
+
+    private fun AppSettingsEntity.toLocalSettings() = LocalAppSettings(
+        nextAppointmentDate = nextAppointmentDate,
+        practitionerName = practitionerName,
+        practitionerAddress = practitionerAddress,
+        reminderDaysBefore = reminderDaysBefore
+    )
 }

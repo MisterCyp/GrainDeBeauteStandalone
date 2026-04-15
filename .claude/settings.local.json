@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/home/cyp/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh:*)",
+      "Bash(xargs cat:*)",
+      "Bash(bash -x /home/cyp/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh --project-dir /mnt/c/Users/miste/Documents/graindebeaute_android_standalone)",
+      "Bash(cat /mnt/c/Users/miste/Documents/graindebeaute_android_standalone/.superpowers/brainstorm/*/state/server.log)"
+    ]
+  }
+}

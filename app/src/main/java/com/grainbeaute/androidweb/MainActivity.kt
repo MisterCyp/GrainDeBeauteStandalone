@@ -53,8 +53,12 @@ fun AppNavigation(repository: LocalRepository) {
             val moleId = backStackEntry.arguments?.getString("moleId")?.toIntOrNull() ?: 0
             CameraScreen(navController, moleId, repository)
         }
-        composable("settings") { SettingsScreen(navController) }
+        composable("settings") { SettingsScreen(navController, repository) }
         composable("settings/about") { SettingsAboutScreen(navController) }
         composable("calibration") { CalibrationScreen(navController) }
+        composable("visit_detail/{visitId}") { backStackEntry ->
+            val visitId = backStackEntry.arguments?.getString("visitId")?.toIntOrNull() ?: 0
+            VisitDetailScreen(navController, repository, visitId)
+        }
     }
 }
