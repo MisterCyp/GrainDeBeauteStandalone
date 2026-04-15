@@ -10,6 +10,9 @@ interface MoleDiagnosisDao {
     @Query("SELECT * FROM mole_diagnoses WHERE moleId = :moleId ORDER BY id DESC LIMIT 1")
     suspend fun getLatestByMole(moleId: Int): MoleDiagnosisEntity?
 
+    @Query("SELECT * FROM mole_diagnoses WHERE moleId = :moleId ORDER BY id DESC")
+    suspend fun getByMole(moleId: Int): List<MoleDiagnosisEntity>
+
     @Insert
     suspend fun insertAll(diagnoses: List<MoleDiagnosisEntity>)
 

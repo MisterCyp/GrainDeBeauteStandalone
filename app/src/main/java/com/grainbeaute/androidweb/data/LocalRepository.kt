@@ -34,7 +34,10 @@ class LocalRepository(private val context: Context) {
     suspend fun getMoles(): List<LocalMole> = withContext(Dispatchers.IO) {
         moleDao.getAll().map { mole ->
             val captures = captureDao.getByMole(mole.id).map { it.toLocalCapture() }
-            val latestDiag = diagnosisDao.getLatestByMole(mole.id)?.toLocalDiagnosis()
+            val latestDiag = diagnosisDao.getLatestByMole(mole.id)?.let { diag ->
+                val visit = visitDao.getById(diag.visitId)
+                diag.toLocalDiagnosis(visit)
+            }
             mole.toLocalMole(
                 captures = captures,
                 lastCapture = captures.firstOrNull(),
@@ -46,7 +49,10 @@ class LocalRepository(private val context: Context) {
     suspend fun getMole(id: Int): LocalMole? = withContext(Dispatchers.IO) {
         val mole = moleDao.getById(id) ?: return@withContext null
         val captures = captureDao.getByMole(id).map { it.toLocalCapture() }
-        val latestDiag = diagnosisDao.getLatestByMole(id)?.toLocalDiagnosis()
+        val latestDiag = diagnosisDao.getLatestByMole(id)?.let { diag ->
+            val visit = visitDao.getById(diag.visitId)
+            diag.toLocalDiagnosis(visit)
+        }
         mole.toLocalMole(
             captures = captures,
             lastCapture = captures.firstOrNull(),
@@ -76,14 +82,14 @@ class LocalRepository(private val context: Context) {
 
     suspend fun getVisits(): List<LocalDermatologistVisit> = withContext(Dispatchers.IO) {
         visitDao.getAll().map { visit ->
-            val diagnoses = diagnosisDao.getByVisit(visit.id).map { it.toLocalDiagnosis() }
+            val diagnoses = diagnosisDao.getByVisit(visit.id).map { it.toLocalDiagnosis(visit) }
             visit.toLocalVisit(diagnoses)
         }
     }
 
     suspend fun getVisit(id: Int): LocalDermatologistVisit? = withContext(Dispatchers.IO) {
         val visit = visitDao.getById(id) ?: return@withContext null
-        val diagnoses = diagnosisDao.getByVisit(id).map { it.toLocalDiagnosis() }
+        val diagnoses = diagnosisDao.getByVisit(id).map { it.toLocalDiagnosis(visit) }
         visit.toLocalVisit(diagnoses)
     }
 
@@ -119,6 +125,13 @@ class LocalRepository(private val context: Context) {
     suspend fun deleteVisit(id: Int) = withContext(Dispatchers.IO) {
         val visit = visitDao.getById(id) ?: return@withContext
         visitDao.delete(visit)
+    }
+
+    suspend fun getDiagnosesForMole(moleId: Int): List<LocalMoleDiagnosis> = withContext(Dispatchers.IO) {
+        diagnosisDao.getByMole(moleId).map { diag ->
+            val visit = visitDao.getById(diag.visitId)
+            diag.toLocalDiagnosis(visit)
+        }
     }
 
     // ──────────────────────────────────────────────────────────
@@ -376,18 +389,21 @@ class LocalRepository(private val context: Context) {
     private fun DermatologistVisitEntity.toLocalVisit(diagnoses: List<LocalMoleDiagnosis>) =
         LocalDermatologistVisit(id = id, date = date, practitionerName = practitionerName, practitionerAddress = practitionerAddress, globalNote = globalNote, diagnoses = diagnoses)
 
-    private fun MoleDiagnosisEntity.toLocalDiagnosis() = LocalMoleDiagnosis(
-        id = id,
-        visitId = visitId,
-        moleId = moleId,
-        moleName = moleName,
-        category = try {
-            DiagnosisCategory.valueOf(category.uppercase())
-        } catch (_: Exception) {
-            DiagnosisCategory.BENIGN
-        },
-        note = note
-    )
+    private fun MoleDiagnosisEntity.toLocalDiagnosis(visit: DermatologistVisitEntity? = null) =
+        LocalMoleDiagnosis(
+            id = id,
+            visitId = visitId,
+            moleId = moleId,
+            moleName = moleName,
+            category = try {
+                DiagnosisCategory.valueOf(category.uppercase())
+            } catch (_: Exception) {
+                DiagnosisCategory.BENIGN
+            },
+            note = note,
+            visitDate = visit?.date ?: 0L,
+            visitPractitionerName = visit?.practitionerName,
+        )
 
     private fun AppSettingsEntity.toLocalSettings() = LocalAppSettings(
         nextAppointmentDate = nextAppointmentDate,

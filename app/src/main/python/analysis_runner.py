@@ -12,9 +12,6 @@ from mole_logic import (
     segment_mole_smart,
     calculate_dimensions,
     calculate_max_dimension,
-    calculate_circularity,
-    calculate_asymmetry,
-    calculate_color_variation,
 )
 from matching_service_local import compute_feature_vector
 
@@ -47,7 +44,7 @@ def run_analysis(image_path, output_dir):
         output_dir (str): dossier où sauvegarder les images résultats
 
     Retourne un dict avec:
-        area_mm2, max_dimension_mm, circularity, asymmetry, color_variation,
+        area_mm2, max_dimension_mm,
         method_used, analyzed_image_path, cropped_image_path, feature_vector (list[float])
 
     Lève ValueError si l'analyse échoue.
@@ -85,17 +82,12 @@ def run_analysis(image_path, output_dir):
 
     area_mm2 = calculate_dimensions(contour, radius)
     max_dim_mm, p1, p2 = calculate_max_dimension(contour, radius)
-    circularity = calculate_circularity(contour)
-    asymmetry = calculate_asymmetry(mask, contour)
-    color_variation = calculate_color_variation(crop, mask)
-    _log(f"métriques: area={area_mm2:.3f} max_dim={max_dim_mm:.3f} circ={circularity:.3f} asym={asymmetry:.3f} color={color_variation:.3f}")
+    # circularity, asymmetry et color_variation désactivés — non affichés dans l'app
+    _log(f"métriques: area={area_mm2:.3f} max_dim={max_dim_mm:.3f}")
 
     metrics = {
         "area_mm2": area_mm2,
         "max_dimension_mm": max_dim_mm,
-        "circularity": circularity,
-        "asymmetry": asymmetry,
-        "color_variation": color_variation,
     }
 
     try:
@@ -134,9 +126,6 @@ def run_analysis(image_path, output_dir):
     result = {
         "area_mm2": float(area_mm2),
         "max_dimension_mm": float(max_dim_mm),
-        "circularity": float(circularity),
-        "asymmetry": float(asymmetry),
-        "color_variation": float(color_variation),
         "method_used": method_name,
         "analyzed_image_path": analyzed_path,
         "cropped_image_path": cropped_image_path,

@@ -19,6 +19,8 @@ data class LocalMoleDiagnosis(
     val moleName: String,
     val category: DiagnosisCategory,
     val note: String?,
+    val visitDate: Long = 0L,
+    val visitPractitionerName: String? = null,
 )
 
 data class LocalDermatologistVisit(
