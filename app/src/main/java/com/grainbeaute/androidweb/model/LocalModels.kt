@@ -1,9 +1,19 @@
 package com.grainbeaute.androidweb.model
 
+data class BodyPosition(
+    val x: Float,           // 0.0..1.0
+    val y: Float,           // 0.0..1.0
+    val face: String,       // "front" | "back"
+    val zoneName: String,
+)
+
 data class LocalMole(
     val id: Int,
     val name: String,
     val bodyPart: String? = null,
+    val bodyPositionX: Float? = null,
+    val bodyPositionY: Float? = null,
+    val bodyFace: String? = null,
     val createdAt: Long,
     val lastCapture: LocalCapture? = null,
     val captures: List<LocalCapture> = emptyList(),
