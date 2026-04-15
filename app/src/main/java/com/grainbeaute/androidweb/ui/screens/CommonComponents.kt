@@ -382,13 +382,7 @@ fun DiagnosisBadgePlaceholder() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AddMoleDialog(onDismiss: () -> Unit, onAdd: (String, String?) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var bodyPart by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false), modifier = Modifier.padding(24.dp), content = { Surface(shape = RoundedCornerShape(24.dp), color = Color(0xFFF5F7FA)) { Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("Nouveau Grain", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Spacer(modifier = Modifier.height(20.dp)); Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFFE0E6ED))) { Column(modifier = Modifier.padding(16.dp)) { OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nom (ex: Dos)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true); Spacer(modifier = Modifier.height(12.dp)); OutlinedTextField(value = bodyPart, onValueChange = { bodyPart = it }, label = { Text("Partie du corps") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true) } }; Spacer(modifier = Modifier.height(24.dp)); Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) { Button(onClick = onDismiss, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black), border = BorderStroke(1.dp, Color(0xFFE0E6ED)), shape = RoundedCornerShape(8.dp)) { Text("Annuler") }; Button(onClick = { onAdd(name, bodyPart.takeIf { it.isNotBlank() }) }, modifier = Modifier.weight(1f), enabled = name.isNotBlank(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007AFF)), shape = RoundedCornerShape(8.dp)) { Text("Ajouter") } } } } })
-}
+
 
 @Composable
 fun SpeedDialFab(isOpen: Boolean, onToggle: () -> Unit, onOpenCamera: () -> Unit, onCreateMole: () -> Unit) {

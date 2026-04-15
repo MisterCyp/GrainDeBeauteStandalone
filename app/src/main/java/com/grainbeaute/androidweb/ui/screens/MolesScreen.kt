@@ -34,7 +34,7 @@ import java.io.File
 fun MolesScreen(navController: NavController, repository: LocalRepository) {
     var moles by remember { mutableStateOf<List<LocalMole>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var showAddMoleDialog by remember { mutableStateOf(false) }
+    var showBodyMapPicker by remember { mutableStateOf(false) }
     var speedDialOpen by remember { mutableStateOf(false) }
     
     val scope = rememberCoroutineScope()
@@ -69,7 +69,7 @@ fun MolesScreen(navController: NavController, repository: LocalRepository) {
                 },
                 onCreateMole = {
                     speedDialOpen = false
-                    showAddMoleDialog = true
+                    showBodyMapPicker = true
                 }
             )
         },
@@ -89,7 +89,7 @@ fun MolesScreen(navController: NavController, repository: LocalRepository) {
                     Icon(Icons.Default.Spa, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Aucun grain enregistré", color = Color.Gray)
-                    TextButton(onClick = { showAddMoleDialog = true }) {
+                    TextButton(onClick = { showBodyMapPicker = true }) {
                         Text("Ajouter mon premier grain")
                     }
                 }
@@ -119,16 +119,21 @@ fun MolesScreen(navController: NavController, repository: LocalRepository) {
         }
     }
 
-    if (showAddMoleDialog) {
-        AddMoleDialog(
-            onDismiss = { showAddMoleDialog = false },
-            onAdd = { name, part ->
-                scope.launch {
-                    repository.createMole(name, part)
-                    loadMoles()
-                    showAddMoleDialog = false
-                }
-            }
-        )
+    if (showBodyMapPicker) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showBodyMapPicker = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            BodyMapPicker(
+                onConfirm = { position ->
+                    scope.launch {
+                        repository.createMoleWithPosition(position)
+                        loadMoles()
+                        showBodyMapPicker = false
+                    }
+                },
+                onDismiss = { showBodyMapPicker = false },
+            )
+        }
     }
 }
