@@ -35,7 +35,6 @@ fun MolesScreen(navController: NavController, repository: LocalRepository) {
     var moles by remember { mutableStateOf<List<LocalMole>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var showAddMoleDialog by remember { mutableStateOf(false) }
-    var moleToDelete by remember { mutableStateOf<LocalMole?>(null) }
     var speedDialOpen by remember { mutableStateOf(false) }
     
     val scope = rememberCoroutineScope()
@@ -103,8 +102,7 @@ fun MolesScreen(navController: NavController, repository: LocalRepository) {
                     items(moles) { mole ->
                         MoleCard(
                             mole = mole,
-                            onClick = { navController.navigate("mole_detail/${mole.id}") },
-                            onDelete = { moleToDelete = mole }
+                            onClick = { navController.navigate("mole_detail/${mole.id}") }
                         )
                     }
                 }
@@ -130,29 +128,6 @@ fun MolesScreen(navController: NavController, repository: LocalRepository) {
                     loadMoles()
                     showAddMoleDialog = false
                 }
-            }
-        )
-    }
-
-    moleToDelete?.let { mole ->
-        AlertDialog(
-            onDismissRequest = { moleToDelete = null },
-            title = { Text("Supprimer ?") },
-            text = { Text("Voulez-vous vraiment supprimer '${mole.name}' ?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            repository.deleteMole(mole.id)
-                            loadMoles()
-                            moleToDelete = null
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Supprimer") }
-            },
-            dismissButton = {
-                TextButton(onClick = { moleToDelete = null }) { Text("Annuler") }
             }
         )
     }

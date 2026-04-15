@@ -36,7 +36,7 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 @Composable
-fun MoleCard(mole: LocalMole, onClick: () -> Unit, onDelete: () -> Unit) {
+fun MoleCard(mole: LocalMole, onClick: () -> Unit) {
     val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
@@ -62,7 +62,6 @@ fun MoleCard(mole: LocalMole, onClick: () -> Unit, onDelete: () -> Unit) {
                 } else { "Pas encore examiné" }
                 Text(text = diagInfo, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
-            IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = Color.LightGray) }
         }
     }
 }
