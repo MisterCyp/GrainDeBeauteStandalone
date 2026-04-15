@@ -47,7 +47,6 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
     var appSettings by remember { mutableStateOf<LocalAppSettings?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     
-    var showNewVisitSheet by remember { mutableStateOf(false) }
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showPractitionerSheet by remember { mutableStateOf(false) }
     
@@ -95,6 +94,11 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
                         Text("Dashboard Santé", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
                 },
+                actions = {
+                    IconButton(onClick = { navController.navigate("settings") }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Paramètres", tint = Color.Gray)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
@@ -134,11 +138,6 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
                                 settings = appSettings ?: LocalAppSettings(null, null, null, 7),
                                 onClick = { showPractitionerSheet = true }
                             )
-                            
-                            LastVisitCard(
-                                lastVisitDate = visits.firstOrNull()?.date,
-                                onClick = { visits.firstOrNull()?.let { navController.navigate("visit_detail/${it.id}") } }
-                            )
 
                             NextAppointmentCard(
                                 nextAppointment = appSettings,
@@ -147,20 +146,9 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
                         }
                     }
 
-                    // SECTION 3 — Visites dermatologiques
+                    // SECTION 3 — Dernière visite
                     item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("VISITES PASSÉES", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
-                            TextButton(onClick = { showNewVisitSheet = true }) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Ajouter")
-                            }
-                        }
+                        Text("DERNIÈRE VISITE", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
                     }
 
                     if (visits.isEmpty()) {
@@ -179,32 +167,17 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
                             }
                         }
                     } else {
-                        items(visits) { visit ->
+                        val lastVisit = visits.first()
+                        item {
                             VisitCard(
-                                visit = visit,
-                                onClick = { navController.navigate("visit_detail/${visit.id}") }
+                                visit = lastVisit,
+                                onClick = { navController.navigate("visit_detail/${lastVisit.id}") }
                             )
                         }
                     }
                 }
             }
         }
-    }
-
-    if (showNewVisitSheet) {
-        NewVisitBottomSheet(
-            moles = moles,
-            currentPractitionerName = appSettings?.practitionerName,
-            currentPractitionerAddress = appSettings?.practitionerAddress,
-            onDismiss = { showNewVisitSheet = false },
-            onSave = { date, practitionerName, practitionerAddress, note, diags ->
-                scope.launch {
-                    repository.createVisit(date, practitionerName, practitionerAddress, note, diags)
-                    loadData()
-                    showNewVisitSheet = false
-                }
-            }
-        )
     }
 
     if (showSettingsSheet) {
@@ -271,38 +244,6 @@ fun MolesSummaryCard(
             }
             Spacer(modifier = Modifier.height(16.dp))
             statsContent()
-        }
-    }
-}
-
-@Composable
-fun LastVisitCard(lastVisitDate: Long?, onClick: () -> Unit) {
-    val dateFormatter = SimpleDateFormat("d MMMM yyyy", Locale.FRANCE)
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = lastVisitDate != null) { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color(0xFFE0E6ED))
-    ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                color = Color(0xFFF8F9FA),
-                shape = CircleShape
-            ) {
-                Icon(Icons.Default.History, contentDescription = null, tint = Color.Gray, modifier = Modifier.padding(8.dp))
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                val lastDateStr = lastVisitDate?.let { dateFormatter.format(Date(it)) } ?: "Aucune visite passée"
-                Text(
-                    text = "Dernière visite : $lastDateStr",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                if (lastVisitDate != null) {
-                    Text("Cliquez pour voir le détail", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                }
-            }
         }
     }
 }

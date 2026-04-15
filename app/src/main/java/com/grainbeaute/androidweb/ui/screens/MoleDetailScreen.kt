@@ -156,7 +156,7 @@ fun MoleDetailScreen(navController: NavController, moleId: Int, repository: Loca
 
                     // 5. Grille de captures
                     item {
-                        Text("Analyses", style = MaterialTheme.typography.titleMedium)
+                        Text("Captures", style = MaterialTheme.typography.titleMedium)
                     }
                     item {
                         val captures = m.captures.sortedByDescending { it.createdAt }

@@ -4,9 +4,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -101,8 +101,8 @@ fun MainScreen(navController: NavController, repository: LocalRepository) {
                     )
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Paramètres") },
-                    label = { Text("Paramètres") },
+                    icon = { Icon(Icons.Default.Assignment, contentDescription = "Mes Visites") },
+                    label = { Text("Visites") },
                     selected = selectedTab == 3,
                     onClick = { selectedTab = 3 },
                     colors = NavigationBarItemDefaults.colors(
@@ -129,7 +129,7 @@ fun MainScreen(navController: NavController, repository: LocalRepository) {
                     repository = repository,
                     onBadgeCountChange = { identificationBadgeCount = it }
                 )
-                3 -> SettingsScreen(navController, repository)
+                3 -> VisitsScreen(navController, repository)
             }
         }
     }
