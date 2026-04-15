@@ -10,7 +10,18 @@ data class LocalMole(
     val latestDiagnosis: LocalMoleDiagnosis? = null,
 )
 
-enum class DiagnosisCategory { BENIGN, MONITOR, SUSPECT, REMOVED }
+enum class DiagnosisCategory { 
+    BENIGN, MONITOR, SUSPECT, REMOVED, TO_DIAGNOSE;
+    
+    val displayName: String
+        get() = when (this) {
+            BENIGN -> "Bénin"
+            MONITOR -> "À surveiller"
+            SUSPECT -> "Suspect"
+            REMOVED -> "Retiré"
+            TO_DIAGNOSE -> "À diagnostiquer"
+        }
+}
 
 data class LocalMoleDiagnosis(
     val id: Int,

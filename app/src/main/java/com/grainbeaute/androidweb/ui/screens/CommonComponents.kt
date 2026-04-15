@@ -57,8 +57,7 @@ fun MoleCard(mole: LocalMole, onClick: () -> Unit) {
                 mole.bodyPart?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Color.Gray) }
                 Spacer(modifier = Modifier.height(4.dp))
                 val diagInfo = if (mole.latestDiagnosis != null) {
-                    val categoryName = when(mole.latestDiagnosis.category) { DiagnosisCategory.BENIGN -> "Bénin"; DiagnosisCategory.MONITOR -> "À surveiller"; DiagnosisCategory.SUSPECT -> "Suspect"; DiagnosisCategory.REMOVED -> "Retiré" }
-                    "$categoryName · examiné récemment"
+                    "${mole.latestDiagnosis.category.displayName} · examiné récemment"
                 } else { "Pas encore examiné" }
                 Text(text = diagInfo, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
@@ -93,7 +92,6 @@ fun NewVisitBottomSheet(
     onDismiss: () -> Unit, 
     onSave: (date: Long, practitionerName: String?, practitionerAddress: String?, note: String?, diagnoses: List<Pair<Int, LocalMoleDiagnosis>>) -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var step by remember { mutableStateOf(1) }
     var visitDate by remember { mutableStateOf(initialVisit?.date ?: System.currentTimeMillis()) }
     var globalNote by remember { mutableStateOf(initialVisit?.globalNote ?: "") }
@@ -105,7 +103,13 @@ fun NewVisitBottomSheet(
     }
     val diagnoses = remember { 
         mutableStateMapOf<Int, DiagnosisCategory>().apply {
-            initialVisit?.diagnoses?.forEach { put(it.moleId ?: -1, it.category) }
+            if (initialVisit != null) {
+                initialVisit.diagnoses.forEach { put(it.moleId ?: -1, it.category) }
+            } else {
+                moles.forEach { mole ->
+                    put(mole.id, mole.latestDiagnosis?.category ?: DiagnosisCategory.TO_DIAGNOSE)
+                }
+            }
         }
     }
     val notes = remember { 
@@ -117,58 +121,81 @@ fun NewVisitBottomSheet(
     val dateFormatter = SimpleDateFormat("d MMMM yyyy", Locale.FRANCE)
     val context = LocalContext.current
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, dragHandle = { BottomSheetDefaults.DragHandle() }) {
-        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp, start = 16.dp, end = 16.dp)) {
-            Text(
-                if (initialVisit == null) {
-                    if (step == 1) "NOUVELLE VISITE — INFOS" else "NOUVELLE VISITE — DIAGNOSTICS"
-                } else {
-                    if (step == 1) "MODIFIER VISITE — INFOS" else "MODIFIER VISITE — DIAGNOSTICS"
-                },
-                style = MaterialTheme.typography.labelLarge, 
-                color = Color.Gray, 
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            if (step == 1) {
-                OutlinedTextField(
-                    value = dateFormatter.format(Date(visitDate)),
-                    onValueChange = {},
-                    label = { Text("Date de la visite") },
-                    modifier = Modifier.fillMaxWidth().clickable { 
-                        showDatePicker(context, visitDate) { visitDate = it }
-                    },
-                    enabled = false,
-                    readOnly = true,
-                    trailingIcon = { Icon(Icons.Default.Event, contentDescription = null) },
-                    colors = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface, disabledBorderColor = MaterialTheme.colorScheme.outline, disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant, disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(value = globalNote, onValueChange = { globalNote = it }, label = { Text("Note globale (optionnel)") }, modifier = Modifier.fillMaxWidth().height(120.dp), maxLines = 5)
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(onClick = { step = 2 }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) { Text("Suivant →") }
-            } else {
-                LazyColumn(modifier = Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(moles) { mole ->
-                        DiagnosisEntryCard(mole = mole, isExamined = examinedMoles[mole.id] ?: false, onExaminedChange = { examinedMoles[mole.id] = it }, category = diagnoses[mole.id] ?: DiagnosisCategory.BENIGN, onCategoryChange = { diagnoses[mole.id] = it }, note = notes[mole.id] ?: "", onNoteChange = { notes[mole.id] = it })
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false // Permet de prendre tout l'écran
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 24.dp), // Un peu d'espace en haut pour le style
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp, start = 16.dp, end = 16.dp)) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Fermer")
                     }
+                    
+                    Text(
+                        if (initialVisit == null) {
+                            if (step == 1) "NOUVELLE VISITE — INFOS" else "NOUVELLE VISITE — DIAGNOSTICS"
+                        } else {
+                            if (step == 1) "MODIFIER VISITE — INFOS" else "MODIFIER VISITE — DIAGNOSTICS"
+                        },
+                        style = MaterialTheme.typography.labelLarge, 
+                        color = Color.Gray, 
+                        modifier = Modifier.align(Alignment.Center).padding(top = 20.dp)
+                    )
                 }
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = { step = 1 }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) { Text("← Retour") }
-                    Button(onClick = {
-                        val finalDiags = examinedMoles.filter { it.value }.keys.map { moleId ->
-                            val mole = moles.find { it.id == moleId }!!
-                            moleId to LocalMoleDiagnosis(id = 0, visitId = initialVisit?.id ?: 0, moleId = moleId, moleName = mole.name, category = diagnoses[moleId] ?: DiagnosisCategory.BENIGN, note = notes[moleId])
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                if (step == 1) {
+                    OutlinedTextField(
+                        value = dateFormatter.format(Date(visitDate)),
+                        onValueChange = {},
+                        label = { Text("Date de la visite") },
+                        modifier = Modifier.fillMaxWidth().clickable { 
+                            showDatePicker(context, visitDate) { visitDate = it }
+                        },
+                        enabled = false,
+                        readOnly = true,
+                        trailingIcon = { Icon(Icons.Default.Event, contentDescription = null) },
+                        colors = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface, disabledBorderColor = MaterialTheme.colorScheme.outline, disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant, disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(value = globalNote, onValueChange = { globalNote = it }, label = { Text("Note globale (optionnel)") }, modifier = Modifier.fillMaxWidth().height(120.dp), maxLines = 5)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(onClick = { step = 2 }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) { Text("Suivant →") }
+                } else {
+                    LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(moles) { mole ->
+                            DiagnosisEntryCard(mole = mole, isExamined = examinedMoles[mole.id] ?: false, onExaminedChange = { examinedMoles[mole.id] = it }, category = diagnoses[mole.id] ?: DiagnosisCategory.BENIGN, onCategoryChange = { diagnoses[mole.id] = it }, note = notes[mole.id] ?: "", onNoteChange = { notes[mole.id] = it })
                         }
-                        onSave(
-                            visitDate, 
-                            initialVisit?.practitionerName ?: currentPractitionerName,
-                            initialVisit?.practitionerAddress ?: currentPractitionerAddress,
-                            globalNote.takeIf { it.isNotBlank() }, 
-                            finalDiags
-                        )
-                    }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) { Text("Enregistrer ✓") }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(onClick = { step = 1 }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) { Text("← Retour") }
+                        Button(onClick = {
+                            val finalDiags = examinedMoles.filter { it.value }.keys.map { moleId ->
+                                val mole = moles.find { it.id == moleId }!!
+                                moleId to LocalMoleDiagnosis(id = 0, visitId = initialVisit?.id ?: 0, moleId = moleId, moleName = mole.name, category = diagnoses[moleId] ?: DiagnosisCategory.BENIGN, note = notes[moleId])
+                            }
+                            onSave(
+                                visitDate, 
+                                initialVisit?.practitionerName ?: currentPractitionerName,
+                                initialVisit?.practitionerAddress ?: currentPractitionerAddress,
+                                globalNote.takeIf { it.isNotBlank() }, 
+                                finalDiags
+                            )
+                        }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) { Text("Enregistrer ✓") }
+                    }
                 }
             }
         }
@@ -194,10 +221,10 @@ fun DiagnosisEntryCard(mole: LocalMole, isExamined: Boolean, onExaminedChange: (
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     var expanded by remember { mutableStateOf(false) }
                     Box {
-                        FilterChip(selected = true, onClick = { expanded = true }, label = { Text(when(category) { DiagnosisCategory.BENIGN -> "Bénin"; DiagnosisCategory.MONITOR -> "À surveiller"; DiagnosisCategory.SUSPECT -> "Suspect"; DiagnosisCategory.REMOVED -> "Retiré" }) }, trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) })
+                        FilterChip(selected = true, onClick = { expanded = true }, label = { Text(category.displayName) }, trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) })
                         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                             DiagnosisCategory.entries.forEach { cat ->
-                                DropdownMenuItem(text = { Text(cat.name.lowercase().replaceFirstChar { it.uppercase() }) }, onClick = { onCategoryChange(cat); expanded = false })
+                                DropdownMenuItem(text = { Text(cat.displayName) }, onClick = { onCategoryChange(cat); expanded = false })
                             }
                         }
                     }
@@ -299,11 +326,17 @@ fun showDatePicker(context: Context, initialDate: Long, onDateSelected: (Long) -
 
 @Composable
 fun DiagnosisBadge(category: DiagnosisCategory) {
-    val (color, text) = when (category) { DiagnosisCategory.BENIGN -> Color(0xFF4CAF50) to "Bénin"; DiagnosisCategory.MONITOR -> Color(0xFFFF9800) to "À surveiller"; DiagnosisCategory.SUSPECT -> Color(0xFFF44336) to "Suspect"; DiagnosisCategory.REMOVED -> Color(0xFF9E9E9E) to "Retiré" }
+    val color = when (category) { 
+        DiagnosisCategory.BENIGN -> Color(0xFF4CAF50)
+        DiagnosisCategory.MONITOR -> Color(0xFFFF9800)
+        DiagnosisCategory.SUSPECT -> Color(0xFFF44336)
+        DiagnosisCategory.REMOVED -> Color(0xFF9E9E9E)
+        DiagnosisCategory.TO_DIAGNOSE -> Color(0xFF007AFF)
+    }
     Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, color.copy(alpha = 0.5f))) {
         Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(color))
-            Text(text, style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.Bold)
+            Text(category.displayName, style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.Bold)
         }
     }
 }
