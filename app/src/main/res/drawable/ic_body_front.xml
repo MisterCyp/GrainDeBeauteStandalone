@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="200dp"
+    android:viewportWidth="100"
+    android:viewportHeight="200">
+    <!-- Tête -->
+    <path
+        android:fillColor="#CCCCCC"
+        android:strokeColor="#888888"
+        android:strokeWidth="1.5"
+        android:pathData="M50,2 A12,12 0 0 1 62,14 A12,12 0 0 1 50,26 A12,12 0 0 1 38,14 A12,12 0 0 1 50,2 Z" />
+    <!-- Corps, bras et jambes -->
+    <path
+        android:fillColor="#CCCCCC"
+        android:strokeColor="#888888"
+        android:strokeWidth="1.5"
+        android:pathData="
+M44,27 L36,31 L22,35 L18,55 L15,72 L13,86
+L16,93 L20,98 L23,93
+L24,78 L26,56 L30,42
+L33,45 L33,95
+L36,100 L34,133 L33,168 L30,194
+L40,198 L41,168 L43,133 L44,106
+L56,106 L57,133 L59,168 L60,198
+L70,194 L67,168 L66,133 L64,100
+L67,95 L67,45
+L70,42 L74,56 L76,78
+L77,93 L80,98 L84,93
+L87,86 L85,72 L82,55 L78,35 L64,31 L56,27 Z" />
+</vector>
