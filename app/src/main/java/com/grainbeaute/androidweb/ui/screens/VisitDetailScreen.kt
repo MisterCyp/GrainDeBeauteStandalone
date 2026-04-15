@@ -2,6 +2,7 @@ package com.grainbeaute.androidweb.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -133,16 +134,23 @@ fun VisitDetailScreen(navController: NavController, repository: LocalRepository,
                 items(visit!!.diagnoses) { diag ->
                     val mole = moles.find { it.id == diag.moleId }
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .let { 
+                                if (diag.moleId != null) {
+                                    it.clickable { navController.navigate("mole_detail/${diag.moleId}") }
+                                } else it
+                            },
                         colors = CardDefaults.cardColors(containerColor = Color.White),
                         border = BorderStroke(1.dp, Color(0xFFE0E6ED))
                     ) {
                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color.LightGray)) {
+                            Box(modifier = Modifier.size(80.dp).clip(CircleShape).background(Color.LightGray)) {
                                 mole?.lastCapture?.let {
                                     AsyncImage(
                                         model = ImageRequest.Builder(context).data(it.croppedImagePath?.let { path -> File(path) }).build(),
                                         contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
                                         contentScale = ContentScale.Crop
                                     )
                                 }

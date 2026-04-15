@@ -182,8 +182,8 @@ fun DiagnosisEntryCard(mole: LocalMole, isExamined: Boolean, onExaminedChange: (
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (isExamined) Color(0xFFF0F7FF) else Color.White), border = BorderStroke(1.dp, if (isExamined) Color(0xFFCCE5FF) else Color(0xFFE0E6ED))) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(Color.LightGray)) {
-                    mole.lastCapture?.let { AsyncImage(model = ImageRequest.Builder(LocalContext.current).data(it.croppedImagePath?.let { File(it) }).build(), contentDescription = null, contentScale = ContentScale.Crop) }
+                Box(modifier = Modifier.size(80.dp).clip(CircleShape).background(Color.LightGray)) {
+                    mole.lastCapture?.let { AsyncImage(model = ImageRequest.Builder(LocalContext.current).data(it.croppedImagePath?.let { File(it) }).build(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(mole.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
