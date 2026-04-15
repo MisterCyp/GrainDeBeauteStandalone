@@ -28,6 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.grainbeaute.androidweb.data.LocalRepository
@@ -144,18 +147,16 @@ fun MoleDetailScreen(navController: NavController, moleId: Int, repository: Loca
                     }
 
                     // 3. Graphe taille (mm)
-                    val taillePoints = evolution.mapNotNull { it.maxDimensionMm?.toDouble() }
-                    if (taillePoints.size >= 2) {
+                    if (evolution.filter { it.maxDimensionMm != null }.size >= 2) {
                         item {
-                            EvolutionChartCard("Taille (mm)", taillePoints)
+                            EvolutionChartCard("Évolution de la taille (mm)", evolution) { it.maxDimensionMm }
                         }
                     }
 
                     // 4. Graphe surface (mm²)
-                    val surfacePoints = evolution.mapNotNull { it.areaMm2?.toDouble() }
-                    if (surfacePoints.size >= 2) {
+                    if (evolution.filter { it.areaMm2 != null }.size >= 2) {
                         item {
-                            EvolutionChartCard("Surface (mm²)", surfacePoints)
+                            EvolutionChartCard("Évolution de la surface (mm²)", evolution) { it.areaMm2 }
                         }
                     }
 
@@ -434,78 +435,125 @@ private fun MoleDiagnosisVisitCard(diagnosis: LocalMoleDiagnosis, onClick: () ->
 }
 
 // ─────────────────────────────────────────────────────────────
-// Graphes d'évolution (inchangés)
+// Graphes d'évolution (Améliorés)
 // ─────────────────────────────────────────────────────────────
 
 @Composable
-fun EvolutionChartCard(title: String, values: List<Double>) {
+private fun EvolutionChartCard(
+    title: String, 
+    points: List<LocalEvolutionPoint>, 
+    valueSelector: (LocalEvolutionPoint) -> Float?
+) {
+    val validPoints = points.filter { valueSelector(it) != null }.sortedBy { it.date }
+    if (validPoints.size < 2) return
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFE0E0E0))
-        )
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFE0E6ED)),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = Color.Gray)
-            Spacer(modifier = Modifier.height(8.dp))
-            EvolutionChart(values)
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            EvolutionChart(validPoints, valueSelector)
         }
     }
 }
 
 @Composable
-fun EvolutionChart(values: List<Double>) {
-    if (values.size < 2) return
+private fun EvolutionChart(points: List<LocalEvolutionPoint>, valueSelector: (LocalEvolutionPoint) -> Float?) {
+    val values = points.map { valueSelector(it)!! }
+    val dates = points.map { it.date }
+    
+    val minDate = dates.minOrNull() ?: 0L
+    val maxDate = dates.maxOrNull() ?: 1L
+    val dateRange = (maxDate - minDate).coerceAtLeast(1L)
+    
+    val minValue = values.minOrNull() ?: 0f
+    val maxValue = values.maxOrNull() ?: 1f
+    val valueRange = (maxValue - minValue).coerceAtLeast(0.1f)
+    
+    val yMin = (minValue - valueRange * 0.15f).coerceAtLeast(0f)
+    val yMax = maxValue + valueRange * 0.15f
+    val yRange = yMax - yMin
 
-    Canvas(modifier = Modifier.height(140.dp).fillMaxWidth()) {
+    Canvas(modifier = Modifier.height(160.dp).fillMaxWidth()) {
         val width = size.width
         val height = size.height
-        val minV = values.minOrNull() ?: 0.0
-        val maxV = values.maxOrNull() ?: 1.0
-        val range = (maxV - minV).coerceAtLeast(0.001)
-        val stepX = width / (values.size - 1)
+        val marginB = 30.dp.toPx()
+        val marginT = 20.dp.toPx()
+        val marginL = 35.dp.toPx()
+        val marginR = 15.dp.toPx()
+        val chartH = height - marginB - marginT
+        val chartW = width - marginL - marginR
 
-        drawLine(
-            Color.LightGray.copy(alpha = 0.5f),
-            Offset(0f, 20.dp.toPx()), Offset(width, 20.dp.toPx()), 1f
-        )
-        drawLine(
-            Color.LightGray.copy(alpha = 0.5f),
-            Offset(0f, height - 20.dp.toPx()), Offset(width, height - 20.dp.toPx()), 1f
-        )
+        fun getX(date: Long) = marginL + ((date - minDate).toFloat() / dateRange.toFloat()) * chartW
+        fun getY(value: Float) = marginT + chartH - ((value - yMin) / yRange) * chartH
+
+        val gridColor = Color.LightGray.copy(alpha = 0.2f)
+        val paintY = android.graphics.Paint().apply {
+            color = android.graphics.Color.LTGRAY
+            textSize = 9.dp.toPx()
+            textAlign = android.graphics.Paint.Align.RIGHT
+        }
+        listOf(yMin, (yMin + yMax) / 2, yMax).forEach { v ->
+            val y = getY(v)
+            drawLine(gridColor, Offset(marginL, y), Offset(marginL + chartW, y), 1.dp.toPx())
+            drawContext.canvas.nativeCanvas.drawText(String.format(Locale.US, "%.1f", v), marginL - 6.dp.toPx(), y + 3.dp.toPx(), paintY)
+        }
+
+        val path = Path()
+        val fillPath = Path()
+        
+        points.forEachIndexed { i, pt ->
+            val x = getX(pt.date)
+            val y = getY(valueSelector(pt)!!)
+            if (i == 0) {
+                path.moveTo(x, y)
+                fillPath.moveTo(x, getY(yMin))
+                fillPath.lineTo(x, y)
+            } else {
+                val prevPt = points[i-1]
+                val prevX = getX(prevPt.date)
+                val prevY = getY(valueSelector(prevPt)!!)
+                val cx1 = prevX + (x - prevX) / 2
+                val cy1 = prevY
+                val cx2 = prevX + (x - prevX) / 2
+                val cy2 = y
+                path.cubicTo(cx1, cy1, cx2, cy2, x, y)
+                fillPath.cubicTo(cx1, cy1, cx2, cy2, x, y)
+            }
+            if (i == points.size - 1) {
+                fillPath.lineTo(x, getY(yMin))
+                fillPath.close()
+            }
+        }
+
+        drawPath(path = fillPath, brush = Brush.verticalGradient(colors = listOf(MedicalBlue.copy(alpha = 0.3f), Color.Transparent), startY = getY(yMax), endY = getY(yMin)))
+        drawPath(path = path, color = MedicalBlue, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 
         val textPaint = android.graphics.Paint().apply {
             color = android.graphics.Color.DKGRAY
             textSize = 10.dp.toPx()
             textAlign = android.graphics.Paint.Align.CENTER
+            isFakeBoldText = true
+        }
+        val datePaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.GRAY
+            textSize = 8.dp.toPx()
+            textAlign = android.graphics.Paint.Align.CENTER
         }
 
-        for (i in values.indices) {
-            val x = i * stepX
-            val normalizedValue = ((values[i] - minV).toFloat() / range.toFloat())
-            val y = height - (normalizedValue * (height - 40.dp.toPx()) + 20.dp.toPx())
-            val point = Offset(x, y)
-
-            if (i < values.size - 1) {
-                val nextNormalized = ((values[i + 1] - minV).toFloat() / range.toFloat())
-                val nextY = height - (nextNormalized * (height - 40.dp.toPx()) + 20.dp.toPx())
-                drawLine(
-                    color = MedicalBlue,
-                    start = point,
-                    end = Offset((i + 1) * stepX, nextY),
-                    strokeWidth = 3.dp.toPx()
-                )
-            }
-
-            drawCircle(color = MedicalBlue, radius = 5.dp.toPx(), center = point)
-
-            drawContext.canvas.nativeCanvas.drawText(
-                String.format(Locale.US, "%.1f", values[i]),
-                x,
-                y - 10.dp.toPx(),
-                textPaint
-            )
+        points.forEach { pt ->
+            val x = getX(pt.date)
+            val v = valueSelector(pt)!!
+            val y = getY(v)
+            drawCircle(Color.White, radius = 5.dp.toPx(), center = Offset(x, y))
+            drawCircle(MedicalBlue, radius = 5.dp.toPx(), center = Offset(x, y), style = Stroke(2.dp.toPx()))
+            drawContext.canvas.nativeCanvas.drawText(String.format(Locale.US, "%.1f", v), x, y - 10.dp.toPx(), textPaint)
+            val dateStr = SimpleDateFormat("dd/MM", Locale.FRANCE).format(Date(pt.date))
+            drawContext.canvas.nativeCanvas.drawText(dateStr, x, height - 5.dp.toPx(), datePaint)
         }
     }
 }
