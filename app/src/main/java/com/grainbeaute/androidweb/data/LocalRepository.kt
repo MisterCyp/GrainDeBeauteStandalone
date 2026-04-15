@@ -357,8 +357,11 @@ class LocalRepository(private val context: Context) {
         latestDiagnosis: LocalMoleDiagnosis? = null,
     ) = LocalMole(
         id = id, name = name, bodyPart = bodyPart,
+        bodyPositionX = bodyPositionX,
+        bodyPositionY = bodyPositionY,
+        bodyFace = bodyFace,
         createdAt = createdAt, lastCapture = lastCapture, captures = captures,
-        latestDiagnosis = latestDiagnosis
+        latestDiagnosis = latestDiagnosis,
     )
 
     fun CaptureEntity.toLocalCapture(): LocalCapture {

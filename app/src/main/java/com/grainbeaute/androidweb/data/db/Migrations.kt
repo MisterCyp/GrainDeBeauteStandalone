@@ -132,7 +132,19 @@ object Migrations {
     }
 
     /**
+     * Migration de la version 5 à 6 :
+     * - Ajout de bodyPositionX, bodyPositionY, bodyFace à la table `moles`
+     */
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `moles` ADD COLUMN `bodyPositionX` REAL")
+            db.execSQL("ALTER TABLE `moles` ADD COLUMN `bodyPositionY` REAL")
+            db.execSQL("ALTER TABLE `moles` ADD COLUMN `bodyFace` TEXT")
+        }
+    }
+
+    /**
      * Liste ordonnée de toutes les migrations à appliquer au builder.
      */
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 }

@@ -10,6 +10,9 @@ data class MoleEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
     val bodyPart: String? = null,
+    val bodyPositionX: Float? = null,
+    val bodyPositionY: Float? = null,
+    val bodyFace: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )
 
