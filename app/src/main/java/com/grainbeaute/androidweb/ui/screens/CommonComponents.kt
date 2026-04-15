@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit
 @Composable
 fun MoleCard(mole: LocalMole, onClick: () -> Unit) {
     val context = LocalContext.current
+    val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.FRANCE)
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = MaterialTheme.shapes.medium,
@@ -50,18 +51,41 @@ fun MoleCard(mole: LocalMole, onClick: () -> Unit) {
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(mole.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    mole.latestDiagnosis?.let { DiagnosisBadge(it.category) } ?: DiagnosisToDiagnoseBadge()
+                Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(mole.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Column(horizontalAlignment = Alignment.End) {
+                        mole.latestDiagnosis?.let { 
+                            DiagnosisBadge(it.category)
+                            Text(
+                                text = formatRelativeTime(it.visitDate),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        } ?: DiagnosisToDiagnoseBadge()
+                    }
                 }
-                mole.bodyPart?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Color.Gray) }
-                Spacer(modifier = Modifier.height(4.dp))
-                val diagInfo = if (mole.latestDiagnosis != null) {
-                    "${mole.latestDiagnosis.category.displayName} · examiné récemment"
-                } else { "Pas encore examiné" }
-                Text(text = diagInfo, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(mole.bodyPart ?: "Position non définie", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                val captureDateText = mole.lastCapture?.let { 
+                    "Dernier cliché : ${formatRelativeTime(it.createdAt)}"
+                } ?: "Aucun cliché"
+                Text(captureDateText, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
         }
+    }
+}
+
+fun formatRelativeTime(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+    val days = diff / (1000 * 60 * 60 * 24)
+    val months = days / 30
+
+    return when {
+        days < 1 -> "aujourd'hui"
+        days < 30 -> "il y a ${days}j"
+        months < 12 -> "il y a ${months} mois"
+        else -> "il y a plus d'un an"
     }
 }
 
