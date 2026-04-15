@@ -348,7 +348,12 @@ fun SpeedDialFab(isOpen: Boolean, onToggle: () -> Unit, onOpenCamera: () -> Unit
 }
 
 @Composable
-fun HealthSummaryCard(moleCount: Int, lastVisitDate: Long?, nextAppointment: LocalAppSettings?, onClickNextAppointment: () -> Unit) {
+fun HealthSummaryCard(
+    moleCount: Int, 
+    lastVisitDate: Long?,
+    nextAppointment: LocalAppSettings? = null,
+    onClickNextAppointment: () -> Unit = {}
+) {
     val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.FRANCE)
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F7FF)), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFFCCE5FF))) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -357,21 +362,20 @@ fun HealthSummaryCard(moleCount: Int, lastVisitDate: Long?, nextAppointment: Loc
             Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF007AFF), modifier = Modifier.size(18.dp)); Spacer(modifier = Modifier.width(8.dp)); Text("$moleCount grains de beauté", style = MaterialTheme.typography.bodyMedium) }
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.History, contentDescription = null, tint = Color(0xFF007AFF), modifier = Modifier.size(18.dp)); Spacer(modifier = Modifier.width(8.dp)); val lastVisitStr = lastVisitDate?.let { dateFormatter.format(Date(it)) } ?: "Aucune visite"; Text("Dernière visite : $lastVisitStr", style = MaterialTheme.typography.bodyMedium) }
-            Spacer(modifier = Modifier.height(16.dp))
-            Card(modifier = Modifier.fillMaxWidth().clickable { onClickNextAppointment() }, colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0xFFCCE5FF))) {
-                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Event, contentDescription = null, tint = Color(0xFF007AFF))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        val nextDateStr = nextAppointment?.nextAppointmentDate?.let { dateFormatter.format(Date(it)) } ?: "Non planifié"
-                        Text("Prochain RDV : $nextDateStr", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                        if (!nextAppointment?.practitionerName.isNullOrBlank()) { 
-                            val loc = if (!nextAppointment.practitionerAddress.isNullOrBlank()) " · ${nextAppointment.practitionerAddress}" else ""
-                            Text("${nextAppointment.practitionerName}$loc", style = MaterialTheme.typography.bodySmall, color = Color.Gray) 
-                        }
-                        else if (nextAppointment?.nextAppointmentDate == null) { Text("Planifier un rendez-vous", style = MaterialTheme.typography.bodySmall, color = Color(0xFF007AFF)) }
-                    }
-                }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onClickNextAppointment() }
+            ) {
+                Icon(Icons.Default.Event, contentDescription = null, tint = Color(0xFF007AFF), modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                val nextDateStr = nextAppointment?.nextAppointmentDate?.let { dateFormatter.format(Date(it)) } ?: "Non planifié"
+                Text(
+                    text = if (nextAppointment?.nextAppointmentDate != null) "Prochain RDV : $nextDateStr" else "Planifier un rendez-vous",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (nextAppointment?.nextAppointmentDate != null) Color.Black else Color(0xFF007AFF)
+                )
             }
         }
     }

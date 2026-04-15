@@ -114,19 +114,14 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(bottom = 32.dp, top = 16.dp)
                 ) {
-                    // SECTION 1 — Résumé santé
+                    // SECTION 1 — Mes Grains
                     item {
-                        HealthSummaryCard(
+                        MolesSummaryCard(
                             moleCount = moles.size,
-                            lastVisitDate = visits.firstOrNull()?.date,
-                            nextAppointment = appSettings,
-                            onClickNextAppointment = { showSettingsSheet = true }
+                            statsContent = {
+                                DiagnosisStatsRow(moles = moles)
+                            }
                         )
-                    }
-
-                    // SECTION Stats
-                    item {
-                        DiagnosisStatsRow(moles = moles)
                     }
 
                     // SECTION 2 — Mon Dermato
@@ -134,10 +129,22 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
                         Text("MON DERMATOLOGUE", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
                     }
                     item {
-                        PractitionerCard(
-                            settings = appSettings ?: LocalAppSettings(null, null, null, 7),
-                            onClick = { showPractitionerSheet = true }
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PractitionerCard(
+                                settings = appSettings ?: LocalAppSettings(null, null, null, 7),
+                                onClick = { showPractitionerSheet = true }
+                            )
+                            
+                            LastVisitCard(
+                                lastVisitDate = visits.firstOrNull()?.date,
+                                onClick = { visits.firstOrNull()?.let { navController.navigate("visit_detail/${it.id}") } }
+                            )
+
+                            NextAppointmentCard(
+                                nextAppointment = appSettings,
+                                onClick = { showSettingsSheet = true }
+                            )
+                        }
                     }
 
                     // SECTION 3 — Visites dermatologiques
@@ -231,6 +238,105 @@ fun DashboardScreen(navController: NavController, repository: LocalRepository) {
                 }
             }
         )
+    }
+}
+
+@Composable
+fun MolesSummaryCard(
+    moleCount: Int,
+    statsContent: @Composable () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color(0xFFE0E6ED))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("MES GRAINS", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    color = Color(0xFFF0F7FF),
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.List, contentDescription = null, tint = Color(0xFF007AFF), modifier = Modifier.padding(8.dp))
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text("$moleCount grains enregistrés", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Suivi en cours", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            statsContent()
+        }
+    }
+}
+
+@Composable
+fun LastVisitCard(lastVisitDate: Long?, onClick: () -> Unit) {
+    val dateFormatter = SimpleDateFormat("d MMMM yyyy", Locale.FRANCE)
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(enabled = lastVisitDate != null) { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFE0E6ED))
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                color = Color(0xFFF8F9FA),
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.History, contentDescription = null, tint = Color.Gray, modifier = Modifier.padding(8.dp))
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                val lastDateStr = lastVisitDate?.let { dateFormatter.format(Date(it)) } ?: "Aucune visite passée"
+                Text(
+                    text = "Dernière visite : $lastDateStr",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                if (lastVisitDate != null) {
+                    Text("Cliquez pour voir le détail", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NextAppointmentCard(nextAppointment: LocalAppSettings?, onClick: () -> Unit) {
+    val dateFormatter = SimpleDateFormat("d MMMM yyyy", Locale.FRANCE)
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFE0E6ED))
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                color = Color(0xFFF0F7FF),
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.Event, contentDescription = null, tint = Color(0xFF007AFF), modifier = Modifier.padding(8.dp))
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                val nextDateStr = nextAppointment?.nextAppointmentDate?.let { dateFormatter.format(Date(it)) } ?: "Non planifié"
+                Text(
+                    text = if (nextAppointment?.nextAppointmentDate != null) "Prochain RDV : $nextDateStr" else "Planifier un rendez-vous",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (nextAppointment?.nextAppointmentDate != null) Color.Black else Color(0xFF007AFF)
+                )
+                if (nextAppointment?.nextAppointmentDate != null) {
+                    Text("Cliquez pour modifier le rappel", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
+            }
+        }
     }
 }
 
