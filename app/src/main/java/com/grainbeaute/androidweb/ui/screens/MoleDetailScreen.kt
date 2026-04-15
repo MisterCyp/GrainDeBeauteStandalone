@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.grainbeaute.androidweb.data.LocalRepository
+import com.grainbeaute.androidweb.model.BodyPosition
 import com.grainbeaute.androidweb.model.LocalCapture
 import com.grainbeaute.androidweb.model.LocalEvolutionPoint
 import com.grainbeaute.androidweb.model.LocalMole
@@ -64,6 +65,7 @@ fun MoleDetailScreen(navController: NavController, moleId: Int, repository: Loca
     var isLoading by remember { mutableStateOf(true) }
     var captureToDelete by remember { mutableStateOf<LocalCapture?>(null) }
     var showDeleteMoleDialog by remember { mutableStateOf(false) }
+    var showBodyMapEditor by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -146,6 +148,14 @@ fun MoleDetailScreen(navController: NavController, moleId: Int, repository: Loca
                         MoleStatusCard(mole = m)
                     }
 
+                    // Position sur le corps
+                    item {
+                        BodyMapSection(
+                            mole = m,
+                            onEditPosition = { showBodyMapEditor = true },
+                        )
+                    }
+
                     // 3. Graphe taille (mm)
                     if (evolution.filter { it.maxDimensionMm != null }.size >= 2) {
                         item {
@@ -200,6 +210,31 @@ fun MoleDetailScreen(navController: NavController, moleId: Int, repository: Loca
 
                     item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
+            }
+        }
+
+        if (showBodyMapEditor) {
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { showBodyMapEditor = false },
+                properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+            ) {
+                val currentPosition = mole?.run {
+                    if (bodyPositionX != null && bodyPositionY != null && bodyFace != null)
+                        BodyPosition(x = bodyPositionX, y = bodyPositionY, face = bodyFace, zoneName = bodyPart ?: "")
+                    else null
+                }
+                BodyMapPicker(
+                    initialPosition = currentPosition,
+                    confirmLabel    = "Enregistrer",
+                    onConfirm = { position ->
+                        scope.launch {
+                            repository.updateMolePosition(moleId, position)
+                            loadData()
+                            showBodyMapEditor = false
+                        }
+                    },
+                    onDismiss = { showBodyMapEditor = false },
+                )
             }
         }
     }
@@ -628,5 +663,53 @@ fun CaptureGridItem(
             color = Color.DarkGray,
             style = MaterialTheme.typography.labelSmall
         )
+    }
+}
+
+@Composable
+private fun BodyMapSection(mole: LocalMole, onEditPosition: () -> Unit) {
+    val hasPosition = mole.bodyPositionX != null
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors   = CardDefaults.cardColors(containerColor = Color.White),
+        shape    = RoundedCornerShape(16.dp),
+        border   = BorderStroke(1.dp, Color(0xFFE0E6ED)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BodyMapThumbnail(
+                position = if (hasPosition) BodyPosition(
+                    x        = mole.bodyPositionX!!,
+                    y        = mole.bodyPositionY!!,
+                    face     = mole.bodyFace!!,
+                    zoneName = mole.bodyPart ?: "",
+                ) else null,
+                modifier = Modifier
+                    .width(60.dp)
+                    .height(120.dp),
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text  = if (hasPosition) (mole.bodyPart ?: "Position enregistrée")
+                            else "Position non définie",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = onEditPosition,
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    Text(
+                        text  = if (hasPosition) "Modifier la position" else "Ajouter une position",
+                        color = Color(0xFF007AFF),
+                    )
+                }
+            }
+        }
     }
 }
