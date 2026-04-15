@@ -35,46 +35,167 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 
+import androidx.compose.ui.res.painterResource
+import com.grainbeaute.androidweb.R
+
 @Composable
-fun MoleCard(mole: LocalMole, onClick: () -> Unit) {
+fun getCategoryColor(category: DiagnosisCategory): Color {
+    return when (category) {
+        DiagnosisCategory.BENIGN -> Color(0xFF4CAF50)
+        DiagnosisCategory.MONITOR -> Color(0xFFFF9800)
+        DiagnosisCategory.SUSPECT -> Color(0xFFF44336)
+        DiagnosisCategory.REMOVED -> Color(0xFF9E9E9E)
+        DiagnosisCategory.TO_DIAGNOSE -> Color(0xFF007AFF)
+    }
+}
+
+@Composable
+fun SmallBodyMap(
+    gender: String,
+    face: String?,
+    x: Float?,
+    y: Float?,
+    modifier: Modifier = Modifier
+) {
+    if (face == null || x == null || y == null) return
+
+    val resId = when {
+        gender == "male" && face == "front" -> R.drawable.ic_body_man_front
+        gender == "male" && face == "back" -> R.drawable.ic_body_man_back
+        gender == "female" && face == "front" -> R.drawable.ic_body_woman_front
+        gender == "female" && face == "back" -> R.drawable.ic_body_woman_back
+        else -> R.drawable.ic_body_front
+    }
+
+    Box(
+        modifier = modifier
+            .size(width = 50.dp, height = 80.dp)
+            .background(Color.Gray.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
+            .padding(4.dp)
+    ) {
+        Image(
+            painter = painterResource(id = resId),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            alpha = 0.6f
+        )
+        // Le point rouge aux coordonnées (x, y)
+        Box(
+            modifier = Modifier
+                .align(Alignment { size, space, _ ->
+                    androidx.compose.ui.unit.IntOffset(
+                        (space.width * x - size.width / 2).toInt(),
+                        (space.height * y - size.height / 2).toInt()
+                    )
+                })
+                .size(6.dp)
+                .background(Color.Red, CircleShape)
+                .border(1.dp, Color.White, CircleShape)
+        )
+    }
+}
+
+@Composable
+fun MoleCard(mole: LocalMole, gender: String = "female", onClick: () -> Unit) {
     val context = LocalContext.current
-    val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.FRANCE)
+    val category = mole.latestDiagnosis?.category ?: DiagnosisCategory.TO_DIAGNOSE
+    val statusColor = getCategoryColor(category)
+
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CardBorder))
+        border = BorderStroke(2.dp, statusColor)
     ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(80.dp).clip(CircleShape).border(1.dp, Color.LightGray, CircleShape).background(Color.Gray.copy(alpha = 0.1f))) {
-                mole.lastCapture?.let { AsyncImage(model = ImageRequest.Builder(context).data(it.croppedImagePath?.let { path -> File(path) }).crossfade(true).build(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) } ?: Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.align(Alignment.Center), tint = Color.Gray)
+        Box {
+            // Badge en haut à gauche
+            Surface(
+                color = statusColor,
+                shape = RoundedCornerShape(bottomEnd = 12.dp)
+            ) {
+                Text(
+                    text = category.displayName.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(mole.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Column(horizontalAlignment = Alignment.End) {
-                        mole.latestDiagnosis?.let { 
-                            DiagnosisBadge(it.category)
-                            Text(
-                                text = formatRelativeTime(it.visitDate),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.Gray,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        } ?: DiagnosisToDiagnoseBadge()
-                    }
+
+            Row(
+                modifier = Modifier.padding(12.dp).padding(top = 16.dp), 
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Image du grain (gauche)
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .border(1.dp, Color.LightGray, CircleShape)
+                        .background(Color.Gray.copy(alpha = 0.1f))
+                ) {
+                    mole.lastCapture?.let { 
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(it.croppedImagePath?.let { path -> File(path) })
+                                .crossfade(true)
+                                .build(), 
+                            contentDescription = null, 
+                            modifier = Modifier.fillMaxSize(), 
+                            contentScale = ContentScale.Crop
+                        ) 
+                    } ?: Icon(
+                        Icons.Default.Add, 
+                        contentDescription = null, 
+                        modifier = Modifier.align(Alignment.Center), 
+                        tint = Color.Gray
+                    )
                 }
-                Text(mole.bodyPart ?: "Position non définie", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                val captureDateText = mole.lastCapture?.let { 
-                    "Dernier cliché : ${formatRelativeTime(it.createdAt)}"
-                } ?: "Aucun cliché"
-                Text(captureDateText, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Textes (centre)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        mole.name, 
+                        style = MaterialTheme.typography.titleMedium, 
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        mole.bodyPart ?: "Position non définie", 
+                        style = MaterialTheme.typography.bodySmall, 
+                        color = Color.Gray
+                    )
+
+                    val captureDateText = mole.lastCapture?.let {
+                        "Dernier cliché : ${formatRelativeTime(it.createdAt)}"
+                    } ?: "Aucun cliché"
+
+                    Text(
+                        captureDateText, 
+                        style = MaterialTheme.typography.bodySmall, 
+                        color = Color.Gray
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Silhouette (droite) - Affichée uniquement si la position existe
+                if (mole.bodyFace != null && mole.bodyPositionX != null && mole.bodyPositionY != null) {
+                    SmallBodyMap(
+                        gender = gender,
+                        face = mole.bodyFace,
+                        x = mole.bodyPositionX,
+                        y = mole.bodyPositionY
+                    )
+                }
             }
         }
     }
 }
-
 fun formatRelativeTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp

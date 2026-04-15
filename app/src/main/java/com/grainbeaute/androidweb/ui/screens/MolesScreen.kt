@@ -104,6 +104,7 @@ fun MolesScreen(navController: NavController, repository: LocalRepository) {
                     items(moles) { mole ->
                         MoleCard(
                             mole = mole,
+                            gender = bodyGender,
                             onClick = { navController.navigate("mole_detail/${mole.id}") }
                         )
                     }
