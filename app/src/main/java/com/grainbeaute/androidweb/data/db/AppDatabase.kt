@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MoleDiagnosisEntity::class,
         AppSettingsEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

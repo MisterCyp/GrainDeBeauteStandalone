@@ -175,7 +175,8 @@ class LocalRepository(private val context: Context) {
             nextAppointmentDate = null,
             practitionerName = null,
             practitionerAddress = null,
-            reminderDaysBefore = 7
+            reminderDaysBefore = 7,
+            bodyGender = "female",
         )
     }
 
@@ -185,7 +186,8 @@ class LocalRepository(private val context: Context) {
                 nextAppointmentDate = settings.nextAppointmentDate,
                 practitionerName = settings.practitionerName,
                 practitionerAddress = settings.practitionerAddress,
-                reminderDaysBefore = settings.reminderDaysBefore
+                reminderDaysBefore = settings.reminderDaysBefore,
+                bodyGender = settings.bodyGender,
             )
         )
     }
@@ -444,6 +446,7 @@ class LocalRepository(private val context: Context) {
         nextAppointmentDate = nextAppointmentDate,
         practitionerName = practitionerName,
         practitionerAddress = practitionerAddress,
-        reminderDaysBefore = reminderDaysBefore
+        reminderDaysBefore = reminderDaysBefore,
+        bodyGender = bodyGender,
     )
 }

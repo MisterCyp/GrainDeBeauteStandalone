@@ -144,7 +144,19 @@ object Migrations {
     }
 
     /**
+     * Migration de la version 6 à 7 :
+     * - Ajout de bodyGender à app_settings (défaut "female")
+     */
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `app_settings` ADD COLUMN `bodyGender` TEXT NOT NULL DEFAULT 'female'"
+            )
+        }
+    }
+
+    /**
      * Liste ordonnée de toutes les migrations à appliquer au builder.
      */
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 }

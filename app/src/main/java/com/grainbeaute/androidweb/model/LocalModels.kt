@@ -58,6 +58,7 @@ data class LocalAppSettings(
     val practitionerName: String?,
     val practitionerAddress: String?,
     val reminderDaysBefore: Int,
+    val bodyGender: String = "female",
 )
 
 data class LocalCapture(

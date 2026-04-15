@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -109,6 +110,72 @@ fun SettingsScreen(navController: NavController, repository: LocalRepository) {
                                 label = { Text("$days j") }
                             )
                         }
+                    }
+                }
+            }
+
+            appSettings?.let { settings ->
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            modifier = Modifier.size(40.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            shape = CircleShape
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Silhouette", style = MaterialTheme.typography.titleMedium)
+                            Text("Corps affiché sur la carte corporelle", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        Button(
+                            onClick = {
+                                if (settings.bodyGender != "female") {
+                                    val newSettings = settings.copy(bodyGender = "female")
+                                    scope.launch {
+                                        repository.updateAppSettings(newSettings)
+                                        appSettings = newSettings
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (settings.bodyGender == "female") Color(0xFF007AFF) else Color(0xFFE0E0E0),
+                                contentColor   = if (settings.bodyGender == "female") Color.White else Color.Black,
+                            ),
+                            shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 0.dp, bottomEnd = 0.dp),
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Femme") }
+
+                        Button(
+                            onClick = {
+                                if (settings.bodyGender != "male") {
+                                    val newSettings = settings.copy(bodyGender = "male")
+                                    scope.launch {
+                                        repository.updateAppSettings(newSettings)
+                                        appSettings = newSettings
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (settings.bodyGender == "male") Color(0xFF007AFF) else Color(0xFFE0E0E0),
+                                contentColor   = if (settings.bodyGender == "male") Color.White else Color.Black,
+                            ),
+                            shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 8.dp, bottomEnd = 8.dp),
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Homme") }
                     }
                 }
             }

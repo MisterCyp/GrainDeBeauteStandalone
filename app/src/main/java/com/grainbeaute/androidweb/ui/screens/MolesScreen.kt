@@ -36,7 +36,8 @@ fun MolesScreen(navController: NavController, repository: LocalRepository) {
     var isLoading by remember { mutableStateOf(true) }
     var showBodyMapPicker by remember { mutableStateOf(false) }
     var speedDialOpen by remember { mutableStateOf(false) }
-    
+    var bodyGender by remember { mutableStateOf("female") }
+
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -44,6 +45,7 @@ fun MolesScreen(navController: NavController, repository: LocalRepository) {
         scope.launch {
             isLoading = true
             moles = repository.getMoles()
+            bodyGender = repository.getAppSettings().bodyGender
             isLoading = false
         }
     }
@@ -125,6 +127,7 @@ fun MolesScreen(navController: NavController, repository: LocalRepository) {
             properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         ) {
             BodyMapPicker(
+                gender    = bodyGender,
                 onConfirm = { position ->
                     scope.launch {
                         repository.createMoleWithPosition(position)

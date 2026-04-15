@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.nativeCanvas
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.grainbeaute.androidweb.data.LocalRepository
@@ -66,6 +65,7 @@ fun MoleDetailScreen(navController: NavController, moleId: Int, repository: Loca
     var captureToDelete by remember { mutableStateOf<LocalCapture?>(null) }
     var showDeleteMoleDialog by remember { mutableStateOf(false) }
     var showBodyMapEditor by remember { mutableStateOf(false) }
+    var bodyGender by remember { mutableStateOf("female") }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -75,6 +75,7 @@ fun MoleDetailScreen(navController: NavController, moleId: Int, repository: Loca
                 mole = repository.getMole(moleId)
                 evolution = repository.getEvolution(moleId)
                 moleDiagnoses = repository.getDiagnosesForMole(moleId)
+                bodyGender = repository.getAppSettings().bodyGender
             } catch (e: Exception) {
                 snackbarHostState.showSnackbar("Erreur de chargement : ${e.localizedMessage ?: "erreur inconnue"}")
             } finally {
@@ -152,6 +153,7 @@ fun MoleDetailScreen(navController: NavController, moleId: Int, repository: Loca
                     item {
                         BodyMapSection(
                             mole = m,
+                            gender = bodyGender,
                             onEditPosition = { showBodyMapEditor = true },
                         )
                     }
@@ -226,6 +228,7 @@ fun MoleDetailScreen(navController: NavController, moleId: Int, repository: Loca
                 BodyMapPicker(
                     initialPosition = currentPosition,
                     confirmLabel    = "Enregistrer",
+                    gender          = bodyGender,
                     onConfirm = { position ->
                         scope.launch {
                             repository.updateMolePosition(moleId, position)
@@ -667,7 +670,7 @@ fun CaptureGridItem(
 }
 
 @Composable
-private fun BodyMapSection(mole: LocalMole, onEditPosition: () -> Unit) {
+private fun BodyMapSection(mole: LocalMole, gender: String = "female", onEditPosition: () -> Unit) {
     val hasPosition = mole.bodyPositionX != null
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -688,6 +691,7 @@ private fun BodyMapSection(mole: LocalMole, onEditPosition: () -> Unit) {
                     face     = mole.bodyFace!!,
                     zoneName = mole.bodyPart ?: "",
                 ) else null,
+                gender   = gender,
                 modifier = Modifier
                     .width(60.dp)
                     .height(120.dp),

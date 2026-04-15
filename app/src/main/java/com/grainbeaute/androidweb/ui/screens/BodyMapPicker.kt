@@ -24,6 +24,17 @@ import com.grainbeaute.androidweb.model.BodyPosition
 import com.grainbeaute.androidweb.model.BodyZones
 
 /**
+ * Retourne le drawable VectorDrawable correspondant à la combinaison genre × face.
+ * gender = "female" | "male", face = "front" | "back".
+ */
+fun bodyDrawableRes(gender: String, face: String): Int = when {
+    gender == "male" && face == "back"  -> R.drawable.ic_body_man_back
+    gender == "male"                    -> R.drawable.ic_body_man_front
+    face   == "back"                    -> R.drawable.ic_body_woman_back
+    else                                -> R.drawable.ic_body_woman_front
+}
+
+/**
  * Sélecteur interactif de position sur un corps humain.
  *
  * - Toggle Face / Dos : changer de face efface le marqueur courant.
@@ -40,6 +51,7 @@ import com.grainbeaute.androidweb.model.BodyZones
 fun BodyMapPicker(
     initialPosition: BodyPosition? = null,
     confirmLabel: String = "Créer",
+    gender: String = "female",
     onConfirm: (BodyPosition?) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -154,9 +166,7 @@ fun BodyMapPicker(
                     },
             ) {
                 Image(
-                    painter = painterResource(
-                        if (face == "front") R.drawable.ic_body_front else R.drawable.ic_body_back,
-                    ),
+                    painter = painterResource(bodyDrawableRes(gender, face)),
                     contentDescription = if (face == "front") "Corps face avant" else "Corps face arrière",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.FillBounds,
@@ -215,13 +225,12 @@ fun BodyMapPicker(
 @Composable
 fun BodyMapThumbnail(
     position: BodyPosition?,
+    gender: String = "female",
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
         Image(
-            painter = painterResource(
-                if (position?.face == "back") R.drawable.ic_body_back else R.drawable.ic_body_front,
-            ),
+            painter = painterResource(bodyDrawableRes(gender, position?.face ?: "front")),
             contentDescription = "Position du grain",
             modifier     = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds,

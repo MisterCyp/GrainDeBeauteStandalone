@@ -92,4 +92,5 @@ data class AppSettingsEntity(
     val practitionerName: String? = null,
     val practitionerAddress: String? = null,
     val reminderDaysBefore: Int = 7,
+    val bodyGender: String = "female",
 )
