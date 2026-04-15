@@ -130,7 +130,12 @@ fun MoleDetailScreen(navController: NavController, moleId: Int, repository: Loca
 
                     // 1. Photo hero
                     item {
-                        MoleHeroPhoto(capture = m.lastCapture)
+                        MoleHeroPhoto(
+                            capture = m.lastCapture,
+                            onClick = {
+                                m.lastCapture?.let { navController.navigate("capture_detail/${it.id}") }
+                            }
+                        )
                     }
 
                     // 2. Card état actuel
@@ -259,18 +264,20 @@ fun MoleDetailScreen(navController: NavController, moleId: Int, repository: Loca
 // ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun MoleHeroPhoto(capture: LocalCapture?) {
+private fun MoleHeroPhoto(capture: LocalCapture?, onClick: () -> Unit) {
     val context = LocalContext.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFEEEEEE)),
+            .clip(CircleShape)
+            .border(1.dp, Color.Black, CircleShape)
+            .background(Color(0xFFEEEEEE))
+            .clickable(enabled = capture != null && capture.status == "done") { onClick() },
         contentAlignment = Alignment.Center
     ) {
         when {
-            capture == null || capture.croppedImagePath == null -> {
+            capture == null || (capture.croppedImagePath == null && capture.status != "pending") -> {
                 Icon(
                     Icons.Default.CameraAlt,
                     contentDescription = null,
@@ -284,7 +291,7 @@ private fun MoleHeroPhoto(capture: LocalCapture?) {
             else -> {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
-                        .data(File(capture.croppedImagePath))
+                        .data(File(capture.croppedImagePath ?: ""))
                         .crossfade(true)
                         .build(),
                     contentDescription = null,
