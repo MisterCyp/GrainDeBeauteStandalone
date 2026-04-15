@@ -66,6 +66,24 @@ class LocalRepository(private val context: Context) {
         entity.copy(id = id).toLocalMole()
     }
 
+    /**
+     * Crée un grain avec un nom auto-généré ("Grain #N") et une position optionnelle.
+     * Utilisé par le flow BodyMapPicker.
+     */
+    suspend fun createMoleWithPosition(bodyPosition: BodyPosition?): LocalMole = withContext(Dispatchers.IO) {
+        val count = moleDao.getAll().size
+        val name = "Grain #${count + 1}"
+        val entity = MoleEntity(
+            name = name,
+            bodyPart = bodyPosition?.zoneName,
+            bodyPositionX = bodyPosition?.x,
+            bodyPositionY = bodyPosition?.y,
+            bodyFace = bodyPosition?.face,
+        )
+        val id = moleDao.insert(entity).toInt()
+        entity.copy(id = id).toLocalMole()
+    }
+
     suspend fun deleteMole(id: Int) = withContext(Dispatchers.IO) {
         val entity = moleDao.getById(id) ?: return@withContext
         moleDao.delete(entity)
@@ -74,6 +92,20 @@ class LocalRepository(private val context: Context) {
     suspend fun updateMole(id: Int, name: String, bodyPart: String?) = withContext(Dispatchers.IO) {
         val entity = moleDao.getById(id) ?: return@withContext
         moleDao.update(entity.copy(name = name, bodyPart = bodyPart))
+    }
+
+    /**
+     * Met à jour uniquement la position d'un grain (utilisé depuis MoleDetailScreen).
+     * Si position est null, efface la position existante.
+     */
+    suspend fun updateMolePosition(moleId: Int, position: BodyPosition?) = withContext(Dispatchers.IO) {
+        val entity = moleDao.getById(moleId) ?: return@withContext
+        moleDao.update(entity.copy(
+            bodyPart = position?.zoneName ?: entity.bodyPart,
+            bodyPositionX = position?.x,
+            bodyPositionY = position?.y,
+            bodyFace = position?.face,
+        ))
     }
 
     // ──────────────────────────────────────────────────────────
