@@ -400,9 +400,6 @@ fun CapturePageContent(
                         capture.analysisResult?.let { res ->
                             MetricRow("Surface", "${String.format("%.2f", res.areaMm2)} mm²")
                             MetricRow("Dimension Max", "${String.format("%.2f", res.maxDimensionMm)} mm")
-                            MetricRow("Circularité", String.format("%.2f", res.circularity))
-                            MetricRow("Asymétrie", String.format("%.2f", res.asymmetry))
-                            MetricRow("Variation Couleur", String.format("%.2f", res.colorVariation))
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Méthode: ${res.methodUsed}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                         } ?: Text("Pas de métriques disponibles")
