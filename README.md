@@ -4,6 +4,8 @@ Ce projet est né de la volonté de proposer un outil de suivi dermatologique qu
 
 L'objectif est de permettre de prendre des photos de grains de beauté et de suivre leur évolution dans le temps, en utilisant une application Android et un petit accessoire à imprimer en 3D.
 
+https://github.com/user-attachments/assets/47d4a93d-1d58-4598-9735-21f1c8d88895
+
 ## Fonctionnement
 
 L'application s'appuie sur deux éléments :
